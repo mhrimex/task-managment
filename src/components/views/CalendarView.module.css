@@ -1,0 +1,169 @@
+/* src/components/views/CalendarView.module.css */
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.monthSelector {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.monthSelector h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  width: 150px;
+  text-align: center;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.calendar {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.daysRow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background-color: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.dayName {
+  padding: 0.75rem;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  border-right: 1px solid var(--color-border);
+}
+
+.dayName:last-child {
+  border-right: none;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.cell {
+  min-height: 120px;
+  padding: 0.5rem;
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  transition: background-color var(--transition-fast);
+}
+
+.cell:last-child {
+  border-right: none;
+}
+
+.cell:hover {
+  background-color: var(--color-surface-hover);
+}
+
+.disabled {
+  color: var(--color-text-muted);
+  opacity: 0.5;
+  background-color: var(--color-bg);
+}
+
+.selected {
+  background-color: var(--color-primary-light);
+}
+
+.number {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+  border-radius: var(--radius-full);
+}
+
+.selected .number {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.cellTasks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-y: auto;
+  max-height: 80px;
+}
+
+.cellTasks::-webkit-scrollbar {
+  width: 4px;
+}
+
+.miniTask {
+  font-size: 0.7rem;
+  background-color: var(--color-bg);
+  padding: 0.25rem 0.375rem;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  border: 1px solid var(--color-border);
+}
+
+.miniTaskCompleted {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .cell {
+    min-height: 80px;
+  }
+  .miniTask {
+    display: none; /* Hide tasks on very small screens to avoid clutter */
+  }
+}
