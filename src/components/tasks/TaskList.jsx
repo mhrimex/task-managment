@@ -28,15 +28,25 @@ const TaskList = ({ onAddTask, onEditTask }) => {
   // Derive filtered and sorted tasks
   const processedTasks = tasks
     .filter(task => {
-      // Filter tab
-      if (filter === 'completed' && task.status !== 'completed') return false;
-      if (filter === 'pending' && task.status !== 'pending') return false;
-      if (filter === 'skipped' && task.status !== 'skipped') return false;
-      if (filter === 'cancelled' && task.status !== 'cancelled') return false;
+      // Filter tab logic
+      if (filter === 'all') {
+        // no filter, show everything
+      } else if (filter === 'pending') {
+        // "Pending" tab shows only pending status tasks
+        if (task.status !== 'pending') return false;
+      } else if (filter === 'completed') {
+        if (task.status !== 'completed') return false;
+      } else if (filter === 'skipped') {
+        if (task.status !== 'skipped') return false;
+      } else if (filter === 'cancelled') {
+        if (task.status !== 'cancelled') return false;
+      }
       // Search
       const query = searchQuery.toLowerCase();
       if (query && !task.title.toLowerCase().includes(query) && 
-          !(task.description || '').toLowerCase().includes(query)) {
+          !(task.description || '').toLowerCase().includes(query) &&
+          !(task.requesterName || '').toLowerCase().includes(query) &&
+          !(task.companyName || '').toLowerCase().includes(query)) {
         return false;
       }
       return true;
@@ -50,8 +60,12 @@ const TaskList = ({ onAddTask, onEditTask }) => {
       } else if (sortBy === 'priority') {
         const priorityOrder = { high: 3, medium: 2, low: 1 };
         return priorityOrder[b.priority] - priorityOrder[a.priority];
+      } else if (sortBy === 'createdAsc') {
+        return new Date(a.createdAt || '1970-01-01') - new Date(b.createdAt || '1970-01-01');
+      } else if (sortBy === 'createdDesc') {
+        return new Date(b.createdAt || '1970-01-01') - new Date(a.createdAt || '1970-01-01');
       }
-      return 0; // Default unordered
+      return 0;
     });
 
   if (isLoading) {
@@ -106,6 +120,8 @@ const TaskList = ({ onAddTask, onEditTask }) => {
               onChange={(e) => setSortBy(e.target.value)}
               className={styles.sortSelect}
             >
+              <option value="createdDesc">Created (Newest First)</option>
+              <option value="createdAsc">Created (Oldest First)</option>
               <option value="dateAsc">Due Date (Earliest First)</option>
               <option value="dateDesc">Due Date (Latest First)</option>
               <option value="priority">Priority (High to Low)</option>

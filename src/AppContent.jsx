@@ -11,7 +11,7 @@ import DashboardView from './components/views/DashboardView';
 import CalendarView from './components/views/CalendarView';
 import SettingsView from './components/views/SettingsView';
 
-function AppContent() {
+function AppContent({ onLogout }) {
   const { addTask, updateTask } = useTaskContext();
   
   const [activeTab, setActiveTab] = useState('tasks');
@@ -47,7 +47,7 @@ function AppContent() {
   };
 
   return (
-    <DashboardLayout activeTab={activeTab} setActiveTab={setActiveTab}>
+    <DashboardLayout activeTab={activeTab} setActiveTab={setActiveTab} onLogout={onLogout}>
       {activeTab === 'dashboard' && (
         <DashboardView onAddTask={handleOpenAdd} onEditTask={handleOpenEdit} />
       )}

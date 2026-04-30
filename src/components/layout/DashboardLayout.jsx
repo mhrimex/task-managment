@@ -6,7 +6,7 @@ import Header from './Header';
 import Sidebar from './Sidebar';
 import styles from './DashboardLayout.module.css';
 
-const DashboardLayout = ({ children, activeTab, setActiveTab }) => {
+const DashboardLayout = ({ children, activeTab, setActiveTab, onLogout }) => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   const toggleSidebar = () => setSidebarOpen(!isSidebarOpen);
@@ -20,7 +20,7 @@ const DashboardLayout = ({ children, activeTab, setActiveTab }) => {
         setActiveTab={setActiveTab}
       />
       <div className={styles.mainContent}>
-        <Header toggleSidebar={toggleSidebar} />
+        <Header toggleSidebar={toggleSidebar} onLogout={onLogout} />
         <main className={styles.contentArea}>
           <div className={styles.contentWrapper}>
             {children}

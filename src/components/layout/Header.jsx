@@ -2,13 +2,13 @@
  * src/components/layout/Header.jsx
  */
 import React, { useState, useRef, useEffect } from 'react';
-import { Menu, Moon, Sun, Bell, AlertCircle, Calendar as CalendarIcon, RefreshCw } from 'lucide-react';
+import { Menu, Moon, Sun, Bell, AlertCircle, Calendar as CalendarIcon, RefreshCw, LogOut } from 'lucide-react';
 import { format, isPast, parseISO, isToday } from 'date-fns';
 import { useTheme } from '../../hooks/useTheme';
 import { useTaskContext } from '../../contexts/TaskContext';
 import styles from './Header.module.css';
 
-const Header = ({ toggleSidebar }) => {
+const Header = ({ toggleSidebar, onLogout }) => {
   const { theme, toggleTheme } = useTheme();
   const { tasks, manualSync, isLoading } = useTaskContext();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -104,9 +104,18 @@ const Header = ({ toggleSidebar }) => {
           {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
         </button>
         
-        <div className={styles.avatar}>
-           <span>U</span>
+        <div className={styles.avatar} title="Logged in as Mohamad">
+           <span>M</span>
         </div>
+
+        <button
+          className={`${styles.iconBtn} ${styles.logoutBtn}`}
+          onClick={onLogout}
+          aria-label="Logout"
+          title="Sign out"
+        >
+          <LogOut size={20} />
+        </button>
       </div>
     </header>
   );

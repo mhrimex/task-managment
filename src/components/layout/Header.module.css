@@ -226,3 +226,8 @@
     transform: rotate(360deg);
   }
 }
+
+.logoutBtn:hover {
+  color: var(--color-danger) !important;
+  background-color: var(--color-danger-light) !important;
+}

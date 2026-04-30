@@ -26,7 +26,7 @@ export const TaskProvider = ({ children }) => {
   // Filter & Sort State
   const [filter, setFilter] = useState('all'); // 'all', 'pending', 'completed'
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('dateAsc'); // 'dateAsc', 'dateDesc', 'priority'
+  const [sortBy, setSortBy] = useState('createdDesc'); // newest tasks first by default
 
   // Load initial tasks from DB
   const fetchTasks = useCallback(async () => {
