@@ -6,6 +6,7 @@
  */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import * as db from '../services/db';
+import { supabase } from '../services/supabase';
 
 const TaskContext = createContext();
 
@@ -33,14 +34,30 @@ export const TaskProvider = ({ children }) => {
       try {
         setIsLoading(true);
         
-        // 1. Try to pull latest from backend first
+        // 1. Try to pull latest from backend first (Supabase)
         try {
-          const res = await fetch('http://localhost:5000/api/tasks');
-          if (res.ok) {
-            const serverTasks = await res.json();
+          const { data: serverTasks, error: fetchError } = await supabase.from('tasks').select('*');
+          
+          if (!fetchError && serverTasks) {
+            // Map snake_case to camelCase
+            const formattedTasks = serverTasks.map(row => ({
+              id: row.id,
+              title: row.title,
+              description: row.description,
+              status: row.status,
+              priority: row.priority,
+              dueDate: row.due_date ? new Date(row.due_date).toISOString().split('T')[0] : null,
+              requesterName: row.requester_name || null,
+              companyName: row.company_name || null,
+              assignedUser: row.assigned_user || null,
+              createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+              updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
+              sync_status: 'synced'
+            }));
+            
             // Save all server tasks locally in a single batch
-            if (serverTasks && serverTasks.length > 0) {
-              await db.saveTasks(serverTasks);
+            if (formattedTasks && formattedTasks.length > 0) {
+              await db.saveTasks(formattedTasks);
             }
           }
         } catch (e) {
@@ -68,23 +85,33 @@ export const TaskProvider = ({ children }) => {
       
       if (pendingTasks.length === 0) return;
 
-      const response = await fetch('http://localhost:5000/api/tasks/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tasks: pendingTasks })
-      });
+      // Convert to snake_case for Supabase
+      const tasksToUpload = pendingTasks.map(t => ({
+        id: t.id,
+        title: t.title,
+        description: t.description || null,
+        status: t.status,
+        priority: t.priority,
+        due_date: t.dueDate ? new Date(t.dueDate).toISOString() : null,
+        requester_name: t.requesterName || null,
+        company_name: t.companyName || null,
+        assigned_user: t.assignedUser || null,
+        sync_status: 'synced',
+        created_at: t.createdAt ? new Date(t.createdAt).toISOString() : new Date().toISOString(),
+        updated_at: t.updatedAt ? new Date(t.updatedAt).toISOString() : new Date().toISOString(),
+      }));
 
-      if (!response.ok) throw new Error('Sync failed');
+      const { data, error } = await supabase.from('tasks').upsert(tasksToUpload, { onConflict: 'id' }).select('id');
 
-      const data = await response.json();
+      if (error) throw error;
       
       // Update local DB to mark them as synced
-      if (data.syncedIds && data.syncedIds.length > 0) {
+      if (data && data.length > 0) {
         let needsStateUpdate = false;
         
         const tasksToUpdate = [];
-        for (const taskId of data.syncedIds) {
-          const storedTask = await db.getTaskById(taskId);
+        for (const row of data) {
+          const storedTask = await db.getTaskById(row.id);
           if (storedTask) {
              storedTask.sync_status = 'synced';
              tasksToUpdate.push(storedTask);
@@ -164,7 +191,9 @@ export const TaskProvider = ({ children }) => {
       setTasks(prev => prev.filter(t => t.id !== id));
       
       // Send delete request to backend quietly
-      fetch(`http://localhost:5000/api/tasks/${id}`, { method: 'DELETE' }).catch(e => console.log('Backend not available for delete', e));
+      supabase.from('tasks').delete().eq('id', id).then(({error}) => {
+          if (error) console.log('Backend not available for delete', error);
+      });
     } catch (err) {
       console.error('Failed to delete task', err);
       throw err;
@@ -203,7 +232,9 @@ export const TaskProvider = ({ children }) => {
     try {
       for (const t of tasks) {
         await db.deleteTaskById(t.id);
-        fetch(`http://localhost:5000/api/tasks/${t.id}`, { method: 'DELETE' }).catch(e => console.log('Backend not available for delete', e));
+        supabase.from('tasks').delete().eq('id', t.id).then(({error}) => {
+          if (error) console.log('Backend not available for delete', error);
+        });
       }
       setTasks([]);
     } catch (err) {
