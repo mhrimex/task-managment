@@ -98,6 +98,7 @@ export const updateTaskStatus = async (id, status) => {
   
   task.status = status;
   task.updatedAt = new Date().toISOString();
+  task.sync_status = 'pending_sync';
   
   await store.put(task);
   await tx.done; // Ensure transaction completes

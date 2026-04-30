@@ -3,6 +3,7 @@
  */
 import React, { useState } from 'react';
 import { Edit2, Trash2, Calendar, AlertCircle, XCircle, FastForward, Briefcase, User, CheckCircle, RotateCcw } from 'lucide-react';
+import { format, parseISO, isPast } from 'date-fns';
 import Button from '../common/Button';
 import Modal from '../common/Modal';
 import styles from './TaskItem.module.css';
