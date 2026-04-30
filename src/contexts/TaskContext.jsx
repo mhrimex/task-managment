@@ -29,116 +29,127 @@ export const TaskProvider = ({ children }) => {
   const [sortBy, setSortBy] = useState('dateAsc'); // 'dateAsc', 'dateDesc', 'priority'
 
   // Load initial tasks from DB
-  useEffect(() => {
-    const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      
+      // 1. Try to pull latest from backend first (Supabase)
       try {
-        setIsLoading(true);
+        const { data: serverTasks, error: fetchError } = await supabase.from('tasks').select('*');
         
-        // 1. Try to pull latest from backend first (Supabase)
-        try {
-          const { data: serverTasks, error: fetchError } = await supabase.from('tasks').select('*');
+        if (!fetchError && serverTasks) {
+          // Map snake_case to camelCase
+          const formattedTasks = serverTasks.map(row => ({
+            id: row.id,
+            title: row.title,
+            description: row.description,
+            status: row.status,
+            priority: row.priority,
+            dueDate: row.due_date ? new Date(row.due_date).toISOString().split('T')[0] : null,
+            requesterName: row.requester_name || null,
+            companyName: row.company_name || null,
+            assignedUser: row.assigned_user || null,
+            createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+            updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
+            sync_status: 'synced'
+          }));
           
-          if (!fetchError && serverTasks) {
-            // Map snake_case to camelCase
-            const formattedTasks = serverTasks.map(row => ({
-              id: row.id,
-              title: row.title,
-              description: row.description,
-              status: row.status,
-              priority: row.priority,
-              dueDate: row.due_date ? new Date(row.due_date).toISOString().split('T')[0] : null,
-              requesterName: row.requester_name || null,
-              companyName: row.company_name || null,
-              assignedUser: row.assigned_user || null,
-              createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
-              updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
-              sync_status: 'synced'
-            }));
-            
-            // Save all server tasks locally in a single batch
-            if (formattedTasks && formattedTasks.length > 0) {
-              await db.saveTasks(formattedTasks);
+          // Get current local tasks to find if we need to delete any locally
+          const localTasks = await db.getAllTasks();
+          const serverIds = new Set(formattedTasks.map(t => t.id));
+          
+          // Delete local tasks that don't exist on the server anymore (unless they are pending upload)
+          for (const localTask of localTasks) {
+            if (!serverIds.has(localTask.id) && localTask.sync_status === 'synced') {
+              await db.deleteTaskById(localTask.id);
             }
           }
-        } catch (e) {
-          console.log('Backend offline or unavailable, relying purely on local offline storage.');
+
+          // Save all server tasks locally in a single batch
+          if (formattedTasks && formattedTasks.length > 0) {
+            await db.saveTasks(formattedTasks);
+          }
         }
-
-        // 2. Load from local IndexedDB
-        const data = await db.getAllTasks();
-        setTasks(data || []);
-      } catch (err) {
-        setError('Failed to load tasks from local storage.');
-        console.error(err);
-      } finally {
-        setIsLoading(false);
+      } catch (e) {
+        console.log('Backend offline or unavailable, relying purely on local offline storage.');
       }
-    };
 
-    fetchTasks();
+      // 2. Load from local IndexedDB
+      const data = await db.getAllTasks();
+      setTasks(data || []);
+    } catch (err) {
+      setError('Failed to load tasks from local storage.');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
 
   const syncToBackend = useCallback(async () => {
     try {
       const allTasks = await db.getAllTasks();
       const pendingTasks = allTasks.filter(t => t.sync_status === 'pending_sync');
       
-      if (pendingTasks.length === 0) return;
+      if (pendingTasks.length > 0) {
+        // Convert to snake_case for Supabase
+        const tasksToUpload = pendingTasks.map(t => ({
+          id: t.id,
+          title: t.title,
+          description: t.description || null,
+          status: t.status,
+          priority: t.priority,
+          due_date: t.dueDate ? new Date(t.dueDate).toISOString() : null,
+          requester_name: t.requesterName || null,
+          company_name: t.companyName || null,
+          assigned_user: t.assignedUser || null,
+          sync_status: 'synced',
+          created_at: t.createdAt ? new Date(t.createdAt).toISOString() : new Date().toISOString(),
+          updated_at: t.updatedAt ? new Date(t.updatedAt).toISOString() : new Date().toISOString(),
+        }));
 
-      // Convert to snake_case for Supabase
-      const tasksToUpload = pendingTasks.map(t => ({
-        id: t.id,
-        title: t.title,
-        description: t.description || null,
-        status: t.status,
-        priority: t.priority,
-        due_date: t.dueDate ? new Date(t.dueDate).toISOString() : null,
-        requester_name: t.requesterName || null,
-        company_name: t.companyName || null,
-        assigned_user: t.assignedUser || null,
-        sync_status: 'synced',
-        created_at: t.createdAt ? new Date(t.createdAt).toISOString() : new Date().toISOString(),
-        updated_at: t.updatedAt ? new Date(t.updatedAt).toISOString() : new Date().toISOString(),
-      }));
+        const { data, error } = await supabase.from('tasks').upsert(tasksToUpload, { onConflict: 'id' }).select('id');
 
-      const { data, error } = await supabase.from('tasks').upsert(tasksToUpload, { onConflict: 'id' }).select('id');
-
-      if (error) throw error;
-      
-      // Update local DB to mark them as synced
-      if (data && data.length > 0) {
-        let needsStateUpdate = false;
-        
-        const tasksToUpdate = [];
-        for (const row of data) {
-          const storedTask = await db.getTaskById(row.id);
-          if (storedTask) {
-             storedTask.sync_status = 'synced';
-             tasksToUpdate.push(storedTask);
-             needsStateUpdate = true;
+        if (error) {
+           console.error("Upload error", error);
+        } else if (data && data.length > 0) {
+          // Update local DB to mark them as synced
+          const tasksToUpdate = [];
+          for (const row of data) {
+            const storedTask = await db.getTaskById(row.id);
+            if (storedTask) {
+               storedTask.sync_status = 'synced';
+               tasksToUpdate.push(storedTask);
+            }
+          }
+          if (tasksToUpdate.length > 0) {
+            await db.saveTasks(tasksToUpdate);
           }
         }
-        
-        if (tasksToUpdate.length > 0) {
-          await db.saveTasks(tasksToUpdate);
-        }
-        
-        // Refresh state cleanly if changes occurred
-        if (needsStateUpdate) {
-            const updatedFromDB = await db.getAllTasks();
-            setTasks(updatedFromDB || []);
-        }
       }
+      
+      // Finally, pull latest changes from server to ensure we are fully in sync
+      await fetchTasks();
+      
     } catch (err) {
       console.log('Background sync failed or backend offline', err);
     }
-  }, []);
+  }, [fetchTasks]);
 
   // Listen for online events to trigger auto-sync
   useEffect(() => {
     window.addEventListener('online', syncToBackend);
     return () => window.removeEventListener('online', syncToBackend);
   }, [syncToBackend]);
+
+  const manualSync = async () => {
+    setIsLoading(true);
+    await syncToBackend();
+    setIsLoading(false);
+  };
 
   const addTask = async (taskData) => {
     try {
@@ -187,13 +198,17 @@ export const TaskProvider = ({ children }) => {
 
   const removeTask = async (id) => {
     try {
+      // 1. Delete locally first for instant UI feedback
       await db.deleteTaskById(id);
       setTasks(prev => prev.filter(t => t.id !== id));
       
-      // Send delete request to backend quietly
-      supabase.from('tasks').delete().eq('id', id).then(({error}) => {
-          if (error) console.log('Backend not available for delete', error);
-      });
+      // 2. Delete from Supabase
+      const { error } = await supabase.from('tasks').delete().eq('id', id);
+      if (error) {
+         console.error('Backend delete failed:', error);
+         // If delete fails (e.g. offline), we'd technically want to queue a delete.
+         // But for a simple app, deleting locally is usually enough as manual sync will clean it up.
+      }
     } catch (err) {
       console.error('Failed to delete task', err);
       throw err;
@@ -251,6 +266,7 @@ export const TaskProvider = ({ children }) => {
     updateTask,
     removeTask,
     updateStatus,
+    manualSync, // Expose manual sync for a button
     
     // UI State
     filter,

@@ -215,3 +215,14 @@
     display: none;
   }
 }
+
+.spinning svg {
+  animation: spin 1s linear infinite;
+  color: var(--color-primary);
+}
+
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}

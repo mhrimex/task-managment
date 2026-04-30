@@ -2,7 +2,7 @@
  * src/components/layout/Header.jsx
  */
 import React, { useState, useRef, useEffect } from 'react';
-import { Menu, Moon, Sun, Bell, AlertCircle, Calendar as CalendarIcon } from 'lucide-react';
+import { Menu, Moon, Sun, Bell, AlertCircle, Calendar as CalendarIcon, RefreshCw } from 'lucide-react';
 import { format, isPast, parseISO, isToday } from 'date-fns';
 import { useTheme } from '../../hooks/useTheme';
 import { useTaskContext } from '../../contexts/TaskContext';
@@ -10,7 +10,7 @@ import styles from './Header.module.css';
 
 const Header = ({ toggleSidebar }) => {
   const { theme, toggleTheme } = useTheme();
-  const { tasks } = useTaskContext();
+  const { tasks, manualSync, isLoading } = useTaskContext();
   const [showNotifications, setShowNotifications] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -46,6 +46,15 @@ const Header = ({ toggleSidebar }) => {
       </div>
 
       <div className={styles.right}>
+        <button 
+          className={`${styles.iconBtn} ${isLoading ? styles.spinning : ''}`} 
+          onClick={manualSync}
+          aria-label="Sync Tasks"
+          title="Sync with cloud"
+        >
+          <RefreshCw size={20} />
+        </button>
+
         <div className={styles.notificationWrapper} ref={dropdownRef}>
           <button 
             className={styles.iconBtn} 
