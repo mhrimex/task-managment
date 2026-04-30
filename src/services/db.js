@@ -8,7 +8,7 @@
 import { openDB } from 'idb';
 
 const DB_NAME = 'DailyTaskAppDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 // Define store names to avoid typos
 const STORES = {
@@ -22,16 +22,31 @@ const STORES = {
  */
 const initDB = async () => {
   return openDB(DB_NAME, DB_VERSION, {
-    upgrade(db) {
+    upgrade(db, oldVersion, newVersion, transaction) {
+      let taskStore;
       // Create 'tasks' store if it doesn't exist
       if (!db.objectStoreNames.contains(STORES.TASKS)) {
         // keyPath acts as the primary key for the store
-        const taskStore = db.createObjectStore(STORES.TASKS, { keyPath: 'id' });
+        taskStore = db.createObjectStore(STORES.TASKS, { keyPath: 'id' });
         
         // Create indexes to allow fast querying/sorting by specific fields
         taskStore.createIndex('dueDate', 'dueDate');
         taskStore.createIndex('status', 'status'); // e.g., 'pending' or 'completed'
         taskStore.createIndex('priority', 'priority');
+      } else {
+        taskStore = transaction.objectStore(STORES.TASKS);
+      }
+      
+      if (oldVersion < 2) {
+        if (!taskStore.indexNames.contains('requesterName')) {
+          taskStore.createIndex('requesterName', 'requesterName');
+        }
+        if (!taskStore.indexNames.contains('companyName')) {
+          taskStore.createIndex('companyName', 'companyName');
+        }
+        if (!taskStore.indexNames.contains('assignedUser')) {
+          taskStore.createIndex('assignedUser', 'assignedUser');
+        }
       }
       
       if (!db.objectStoreNames.contains(STORES.SETTINGS)) {

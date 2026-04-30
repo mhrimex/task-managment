@@ -33,6 +33,9 @@ async function initDB() {
         status ENUM('pending', 'completed', 'skipped', 'cancelled') DEFAULT 'pending',
         priority ENUM('low', 'medium', 'high') DEFAULT 'medium',
         due_date DATETIME DEFAULT NULL,
+        requester_name VARCHAR(255) DEFAULT NULL,
+        company_name VARCHAR(255) DEFAULT NULL,
+        assigned_user VARCHAR(255) DEFAULT NULL,
         sync_status ENUM('synced', 'pending_sync') DEFAULT 'synced',
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -40,6 +43,12 @@ async function initDB() {
         INDEX idx_status (status)
       )
     `);
+    
+    // Add columns if they don't exist (for existing tables)
+    try { await connection.query('ALTER TABLE tasks ADD COLUMN requester_name VARCHAR(255) DEFAULT NULL'); } catch (e) {}
+    try { await connection.query('ALTER TABLE tasks ADD COLUMN company_name VARCHAR(255) DEFAULT NULL'); } catch (e) {}
+    try { await connection.query('ALTER TABLE tasks ADD COLUMN assigned_user VARCHAR(255) DEFAULT NULL'); } catch (e) {}
+
     console.log('✅ Database tables verified/created successfully');
     connection.release();
   } catch (error) {
@@ -62,6 +71,9 @@ app.get('/api/tasks', async (req, res) => {
       status: row.status,
       priority: row.priority,
       dueDate: row.due_date ? new Date(row.due_date).toISOString().split('T')[0] : null,
+      requesterName: row.requester_name || null,
+      companyName: row.company_name || null,
+      assignedUser: row.assigned_user || null,
       createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
       updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
       sync_status: 'synced' // everything coming from DB is considered synced
@@ -86,7 +98,7 @@ app.post('/api/tasks/sync', async (req, res) => {
     await connection.beginTransaction();
 
     for (const task of tasks) {
-      const { id, title, description, status, priority, dueDate, createdAt, updatedAt } = task;
+      const { id, title, description, status, priority, dueDate, requesterName, companyName, assignedUser, createdAt, updatedAt } = task;
       
       // Formatting dates for MySQL
       const formattedDueDate = dueDate ? new Date(dueDate).toISOString().slice(0, 19).replace('T', ' ') : null;
@@ -94,17 +106,20 @@ app.post('/api/tasks/sync', async (req, res) => {
       const formattedUpdatedAt = updatedAt ? new Date(updatedAt).toISOString().slice(0, 19).replace('T', ' ') : new Date().toISOString().slice(0, 19).replace('T', ' ');
 
       await connection.query(`
-        INSERT INTO tasks (id, title, description, status, priority, due_date, created_at, updated_at, sync_status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+        INSERT INTO tasks (id, title, description, status, priority, due_date, requester_name, company_name, assigned_user, created_at, updated_at, sync_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
         ON DUPLICATE KEY UPDATE
           title = VALUES(title),
           description = VALUES(description),
           status = VALUES(status),
           priority = VALUES(priority),
           due_date = VALUES(due_date),
+          requester_name = VALUES(requester_name),
+          company_name = VALUES(company_name),
+          assigned_user = VALUES(assigned_user),
           updated_at = VALUES(updated_at),
           sync_status = 'synced'
-      `, [id, title, description || null, status, priority, formattedDueDate, formattedCreatedAt, formattedUpdatedAt]);
+      `, [id, title, description || null, status, priority, formattedDueDate, requesterName || null, companyName || null, assignedUser || null, formattedCreatedAt, formattedUpdatedAt]);
     }
 
     await connection.commit();
