@@ -38,9 +38,9 @@ export const TaskProvider = ({ children }) => {
           const res = await fetch('http://localhost:5000/api/tasks');
           if (res.ok) {
             const serverTasks = await res.json();
-            // Save all server tasks locally
-            for (const t of serverTasks) {
-              await db.saveTask(t);
+            // Save all server tasks locally in a single batch
+            if (serverTasks && serverTasks.length > 0) {
+              await db.saveTasks(serverTasks);
             }
           }
         } catch (e) {
@@ -82,13 +82,18 @@ export const TaskProvider = ({ children }) => {
       if (data.syncedIds && data.syncedIds.length > 0) {
         let needsStateUpdate = false;
         
+        const tasksToUpdate = [];
         for (const taskId of data.syncedIds) {
           const storedTask = await db.getTaskById(taskId);
           if (storedTask) {
              storedTask.sync_status = 'synced';
-             await db.saveTask(storedTask);
+             tasksToUpdate.push(storedTask);
              needsStateUpdate = true;
           }
+        }
+        
+        if (tasksToUpdate.length > 0) {
+          await db.saveTasks(tasksToUpdate);
         }
         
         // Refresh state cleanly if changes occurred
@@ -181,10 +186,9 @@ export const TaskProvider = ({ children }) => {
 
   const importTasks = async (importedTasks) => {
     try {
-      for (const t of importedTasks) {
-        // Enforce pending_sync so it backs up to the server
-        t.sync_status = 'pending_sync'; 
-        await db.saveTask(t);
+      if (importedTasks && importedTasks.length > 0) {
+        const tasksToSave = importedTasks.map(t => ({ ...t, sync_status: 'pending_sync' }));
+        await db.saveTasks(tasksToSave);
       }
       const data = await db.getAllTasks();
       setTasks(data || []);

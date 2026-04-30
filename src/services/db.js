@@ -69,6 +69,21 @@ export const saveTask = async (task) => {
 };
 
 /**
+ * Add or update multiple tasks in a single transaction (batch upsert).
+ * @param {Array<Object>} tasks The list of task objects to save
+ * @returns {Promise<void>}
+ */
+export const saveTasks = async (tasks) => {
+  const db = await initDB();
+  const tx = db.transaction(STORES.TASKS, 'readwrite');
+  const store = tx.objectStore(STORES.TASKS);
+  for (const task of tasks) {
+    store.put(task);
+  }
+  await tx.done;
+};
+
+/**
  * Retrieve all tasks from the DB.
  * @returns {Promise<Array>} List of all tasks
  */
