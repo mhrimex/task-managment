@@ -124,41 +124,54 @@ export const AuthProvider = ({ children }) => {
   // ── Load Roles, Users, and Current User Profile from Supabase ─────────────
   useEffect(() => {
     const initAuthData = async () => {
+      setIsLoading(true);
+      console.log("[AuthInit] Starting...");
       try {
         // 1. Fetch roles
+        console.log("[AuthInit] Step 1: Fetching roles...");
         const { data: rolesData, error: rolesError } = await supabase.from('roles').select('*');
         if (rolesError) {
-          console.error("Supabase Roles Fetch Error:", rolesError);
+          console.error("[AuthInit] Roles fetch error:", rolesError);
           setRoles(BUILT_IN_ROLES);
         } else if (rolesData && rolesData.length > 0) {
+          console.log("[AuthInit] Roles fetched successfully:", rolesData.length);
           setRoles(rolesData);
         } else {
+          console.log("[AuthInit] No roles found, using defaults");
           setRoles(BUILT_IN_ROLES);
         }
 
-        // 2. Fetch user profiles for the management list
-        const { data: profilesData } = await supabase.from('profiles').select('*');
-        if (profilesData) setUsers(profilesData.map(p => ({
-          id: p.id,
-          username: p.username,
-          fullName: p.full_name,
-          role: p.role_id,
-          email: p.email
-        })));
+        // 2. Fetch user profiles
+        console.log("[AuthInit] Step 2: Fetching profiles...");
+        const { data: profilesData, error: profilesError } = await supabase.from('profiles').select('*');
+        if (profilesError) {
+          console.error("[AuthInit] Profiles fetch error:", profilesError);
+        } else if (profilesData) {
+          console.log("[AuthInit] Profiles fetched successfully:", profilesData.length);
+          setUsers(profilesData.map(p => ({
+            id: p.id,
+            username: p.username,
+            fullName: p.full_name,
+            role: p.role_id,
+            email: p.email
+          })));
+        }
 
-        // 3. RE-FETCH CURRENT USER PROFILE (Fixes the refresh issue)
+        // 3. RE-FETCH CURRENT USER PROFILE
         const savedUser = localStorage.getItem('currentUser');
         if (savedUser) {
+          console.log("[AuthInit] Step 3: Refetching current user...");
           const parsed = JSON.parse(savedUser);
-          const { data: profile, error } = await supabase
+          const { data: profile, error: refetchError } = await supabase
             .from('profiles')
             .select('*, roles(permissions)')
             .eq('id', parsed.id)
             .single();
 
-          if (error) {
-            console.error("Profile refetch error:", error);
+          if (refetchError) {
+            console.error("[AuthInit] Profile refetch error:", refetchError);
           } else if (profile) {
+            console.log("[AuthInit] Current user profile refreshed");
             const freshUser = {
               id: profile.id,
               email: profile.email,
@@ -172,9 +185,10 @@ export const AuthProvider = ({ children }) => {
           }
         }
       } catch (err) {
-        console.error("Auth init fatal error:", err);
-        setRoles(BUILT_IN_ROLES); // Absolute fallback
+        console.error("[AuthInit] Fatal error during initialization:", err);
+        setRoles(BUILT_IN_ROLES);
       } finally {
+        console.log("[AuthInit] Initialization complete.");
         setIsLoading(false);
       }
     };
