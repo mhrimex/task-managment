@@ -51,6 +51,7 @@ export const TaskProvider = ({ children }) => {
             requesterName: row.requester_name || null,
             companyName: row.company_name || null,
             assignedUser: row.assigned_user || null,
+            assignedTo: row.assigned_to || null,
             createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
             updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
             sync_status: 'synced'
@@ -108,6 +109,7 @@ export const TaskProvider = ({ children }) => {
           requester_name: t.requesterName || null,
           company_name: t.companyName || null,
           assigned_user: t.assignedUser || null,
+          assigned_to: t.assignedTo || null,
           sync_status: 'synced',
           created_at: t.createdAt ? new Date(t.createdAt).toISOString() : new Date().toISOString(),
           updated_at: t.updatedAt ? new Date(t.updatedAt).toISOString() : new Date().toISOString(),
@@ -158,6 +160,7 @@ export const TaskProvider = ({ children }) => {
       const newTask = {
         ...taskData,
         assignedUser: taskData.assignedUser || currentUser?.username || '',
+        assignedTo: taskData.assignedTo || currentUser?.id || null,
         id: crypto.randomUUID(), // Ensure UUID for each task
         status: 'pending',
         createdAt: new Date().toISOString(),

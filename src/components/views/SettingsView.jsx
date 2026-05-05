@@ -6,8 +6,10 @@ import Button from '../common/Button';
 
 const SettingsView = () => {
   const { theme, toggleTheme } = useTheme();
-  const { tasks, importTasks, wipeAllTasks } = useTaskContext();
   const [notifPermission, setNotifPermission] = useState('default');
+  const [notifsEnabled, setNotifsEnabled] = useState(() => {
+    return localStorage.getItem('app_notifs_enabled') !== 'false';
+  });
 
   useEffect(() => {
     if ('Notification' in window) {
@@ -69,11 +71,18 @@ const SettingsView = () => {
     setNotifPermission(permission);
     
     if (permission === 'granted') {
+      setNotifsEnabled(true);
+      localStorage.setItem('app_notifs_enabled', 'true');
       new Notification('Notifications Enabled!', {
         body: 'You will now receive alerts for due tasks.',
         icon: '/vite.svg'
       });
     }
+  };
+
+  const handleDisableNotifications = () => {
+    setNotifsEnabled(false);
+    localStorage.setItem('app_notifs_enabled', 'false');
   };
   // We can include a generic context to handle this, or just map standard properties.
   
@@ -118,14 +127,22 @@ const SettingsView = () => {
               <p style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Bell size={16} /> Notifications</p>
               <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Alerts for due tasks</p>
             </div>
-            <Button 
-              variant={notifPermission === 'granted' ? 'secondary' : 'primary'} 
-              onClick={handleEnableNotifications}
-              disabled={notifPermission === 'granted' || notifPermission === 'denied'}
-            >
-              {notifPermission === 'granted' ? <><Check size={16} /> Enabled</> : 
-               notifPermission === 'denied' ? 'Blocked by Browser' : 'Enable'}
-            </Button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              {notifPermission === 'granted' && notifsEnabled ? (
+                <Button variant="secondary" onClick={handleDisableNotifications}>
+                   Disable
+                </Button>
+              ) : (
+                <Button 
+                  variant={notifPermission === 'granted' ? 'primary' : 'primary'} 
+                  onClick={handleEnableNotifications}
+                  disabled={notifPermission === 'denied'}
+                >
+                  {notifPermission === 'granted' ? 'Enable' : 
+                   notifPermission === 'denied' ? 'Blocked by Browser' : 'Request Access'}
+                </Button>
+              )}
+            </div>
           </div>
         </section>
         

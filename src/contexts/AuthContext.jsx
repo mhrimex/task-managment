@@ -17,7 +17,8 @@
  * Roles are stored in localStorage["app_roles"].
  * Users are stored in localStorage["app_users"].
  */
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../services/supabase';
 
 const AuthContext = createContext();
 
@@ -108,8 +109,34 @@ export const useAuthContext = () => {
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export const AuthProvider = ({ children }) => {
-  const [roles, setRoles] = useState(loadRoles);
-  const [users, setUsers] = useState(loadUsers);
+  const [roles, setRoles] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // ── Load Roles and Users from Supabase ────────────────────────────────────
+  useEffect(() => {
+    const initAuthData = async () => {
+      try {
+        // Fetch roles
+        const { data: rolesData } = await supabase.from('roles').select('*');
+        if (rolesData) setRoles(rolesData);
+
+        // Fetch user profiles
+        const { data: profilesData } = await supabase.from('profiles').select('*');
+        if (profilesData) setUsers(profilesData.map(p => ({
+          id: p.id,
+          username: p.username,
+          fullName: p.full_name,
+          role: p.role_id
+        })));
+      } catch (err) {
+        console.error("Auth init error:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    initAuthData();
+  }, []);
 
   const [currentUser, setCurrentUser] = useState(() => {
     try {
@@ -127,24 +154,51 @@ export const AuthProvider = ({ children }) => {
 
   // ── Auth ──────────────────────────────────────────────────────────────────
 
-  const login = (username, password) => {
-    const match = users.find(
-      u => u.username.toLowerCase() === username.toLowerCase() && u.password === password
-    );
-    if (!match) return false;
+  /** Performs real Supabase Auth login and fetches the associated profile. */
+  const login = async (email, password) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    const safeUser = {
-      id: match.id,
-      username: match.username,
-      fullName: match.fullName,
-      role: match.role,
-    };
-    setCurrentUser(safeUser);
-    localStorage.setItem('currentUser', JSON.stringify(safeUser));
-    return true;
+      if (error) {
+        alert("Login failed: " + error.message);
+        return false;
+      }
+
+      // Fetch the profile (including role/permissions)
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*, roles(permissions)')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profileError) {
+        console.error("Profile fetch error:", profileError);
+        return false;
+      }
+
+      const userToSave = {
+        id: data.user.id,
+        email: data.user.email,
+        username: profile.username,
+        fullName: profile.full_name,
+        role: profile.role_id,
+        permissions: profile.roles?.permissions ?? DEFAULT_PERMISSIONS
+      };
+
+      setCurrentUser(userToSave);
+      localStorage.setItem('currentUser', JSON.stringify(userToSave));
+      return true;
+    } catch (err) {
+      console.error("Unexpected login error:", err);
+      return false;
+    }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setCurrentUser(null);
     localStorage.removeItem('currentUser');
   };

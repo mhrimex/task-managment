@@ -10,7 +10,7 @@ import { useAuthContext } from '../../contexts/AuthContext';
 import styles from './LoginPage.module.css';
 
 const LoginPage = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -21,13 +21,10 @@ const LoginPage = () => {
     setError('');
     setIsLoading(true);
 
-    // Simulate a brief loading delay for a polished feel
-    await new Promise(resolve => setTimeout(resolve, 600));
-
-    const success = login(username, password);
+    const success = await login(email, password);
 
     if (!success) {
-      setError('Invalid username or password. Please try again.');
+      setError('Invalid email or password. Please try again.');
     }
 
     setIsLoading(false);
@@ -48,17 +45,17 @@ const LoginPage = () => {
         {/* Login Form */}
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.field}>
-            <label htmlFor="username" className={styles.label}>Username</label>
+            <label htmlFor="email" className={styles.label}>Email Address</label>
             <div className={styles.inputWrapper}>
               <User size={18} className={styles.inputIcon} />
               <input
-                id="username"
-                type="text"
+                id="email"
+                type="email"
                 className={styles.input}
-                placeholder="Enter your username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                autoComplete="username"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
                 required
               />
             </div>

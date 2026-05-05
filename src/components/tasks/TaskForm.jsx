@@ -17,6 +17,7 @@ const TaskForm = ({ initialData, onSubmit, onCancel }) => {
     requesterName: '',
     companyName: '',
     assignedUser: '',
+    assignedTo: '',
   });
 
   const [errors, setErrors] = useState({});
@@ -32,6 +33,7 @@ const TaskForm = ({ initialData, onSubmit, onCancel }) => {
         requesterName: initialData.requesterName || '',
         companyName: initialData.companyName || '',
         assignedUser: initialData.assignedUser || '',
+        assignedTo: initialData.assignedTo || '',
       });
     }
   }, [initialData]);
@@ -133,13 +135,21 @@ const TaskForm = ({ initialData, onSubmit, onCancel }) => {
         <Input
           type="select"
           label="Assigned User"
-          name="assignedUser"
-          value={formData.assignedUser}
-          onChange={handleChange}
+          name="assignedTo"
+          value={formData.assignedTo || ''}
+          onChange={(e) => {
+            const userId = e.target.value;
+            const user = users.find(u => u.id === userId);
+            setFormData(prev => ({
+              ...prev,
+              assignedTo: userId,
+              assignedUser: user ? (user.fullName || user.username) : ''
+            }));
+          }}
         >
           <option value="">-- Assign to a user --</option>
           {users.map(u => (
-            <option key={u.id} value={u.username}>{u.fullName || u.username}</option>
+            <option key={u.id} value={u.id}>{u.fullName || u.username}</option>
           ))}
         </Input>
       )}
