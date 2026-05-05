@@ -1,25 +1,28 @@
-import React, { useState } from 'react';
+import React from 'react';
 import AppContent from './AppContent';
 import { TaskProvider } from './contexts/TaskContext';
+import { AuthProvider, useAuthContext } from './contexts/AuthContext';
 import LoginPage from './components/auth/LoginPage';
 
-function App() {
-  // Check if user was previously logged in (persists across refresh)
-  const [isLoggedIn, setIsLoggedIn] = useState(
-    () => localStorage.getItem('isLoggedIn') === 'true'
-  );
+function AppRoot() {
+  const { currentUser } = useAuthContext();
 
-  if (!isLoggedIn) {
-    return <LoginPage onLogin={() => setIsLoggedIn(true)} />;
+  if (!currentUser) {
+    return <LoginPage />;
   }
 
   return (
     <TaskProvider>
-      <AppContent onLogout={() => {
-        localStorage.removeItem('isLoggedIn');
-        setIsLoggedIn(false);
-      }} />
+      <AppContent />
     </TaskProvider>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppRoot />
+    </AuthProvider>
   );
 }
 

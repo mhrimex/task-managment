@@ -1,0 +1,286 @@
+/**
+ * src/contexts/AuthContext.jsx
+ *
+ * Provides global authentication and role/permission management.
+ *
+ * PERMISSION SYSTEM:
+ * ------------------
+ * Instead of a fixed "admin/user" binary, permissions are defined per ROLE.
+ * Each role has a set of boolean permissions:
+ *   - canUpdateStatus  : Can change task status (complete, skip, cancel)
+ *   - canEditTask      : Can edit task details (title, description, etc.)
+ *   - canDeleteTask    : Can delete tasks
+ *   - canCreateTask    : Can create new tasks
+ *   - canAssignTask    : Can assign tasks to other users (admin feature)
+ *   - canManageUsers   : Can access the user management panel
+ *
+ * Roles are stored in localStorage["app_roles"].
+ * Users are stored in localStorage["app_users"].
+ */
+import React, { createContext, useContext, useState } from 'react';
+
+const AuthContext = createContext();
+
+// ─── Default permission sets ─────────────────────────────────────────────────
+
+export const DEFAULT_PERMISSIONS = {
+  canUpdateStatus : false,
+  canEditTask     : false,
+  canDeleteTask   : false,
+  canCreateTask   : false,
+  canAssignTask   : false,
+  canManageUsers  : false,
+};
+
+const BUILT_IN_ROLES = [
+  {
+    id: 'admin',
+    name: 'Admin',
+    builtIn: true, // cannot be deleted
+    permissions: {
+      canUpdateStatus : true,
+      canEditTask     : true,
+      canDeleteTask   : true,
+      canCreateTask   : true,
+      canAssignTask   : true,
+      canManageUsers  : true,
+    },
+  },
+  {
+    id: 'user',
+    name: 'User',
+    builtIn: false,
+    permissions: {
+      canUpdateStatus : true,  // ← fixed: users CAN update status
+      canEditTask     : false,
+      canDeleteTask   : false,
+      canCreateTask   : false,
+      canAssignTask   : false,
+      canManageUsers  : false,
+    },
+  },
+];
+
+// ─── Storage helpers ──────────────────────────────────────────────────────────
+
+const loadRoles = () => {
+  try {
+    const stored = localStorage.getItem('app_roles');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (_) {}
+  localStorage.setItem('app_roles', JSON.stringify(BUILT_IN_ROLES));
+  return BUILT_IN_ROLES;
+};
+
+const saveRoles = (roles) => localStorage.setItem('app_roles', JSON.stringify(roles));
+
+const loadUsers = () => {
+  try {
+    const stored = localStorage.getItem('app_users');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (_) {}
+
+  const defaults = [
+    { id: '1', username: 'admin',  fullName: 'Mohamad (Admin)', password: 'mh123',  role: 'admin' },
+    { id: '2', username: 'khodor', fullName: 'Khodor',           password: 'kd123',  role: 'user'  },
+    { id: '3', username: 'user2',  fullName: 'User Two',          password: '123',    role: 'user'  },
+  ];
+  localStorage.setItem('app_users', JSON.stringify(defaults));
+  return defaults;
+};
+
+const saveUsers = (users) => localStorage.setItem('app_users', JSON.stringify(users));
+
+// ─── Hook ─────────────────────────────────────────────────────────────────────
+
+export const useAuthContext = () => {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuthContext must be used within an AuthProvider');
+  return context;
+};
+
+// ─── Provider ─────────────────────────────────────────────────────────────────
+
+export const AuthProvider = ({ children }) => {
+  const [roles, setRoles] = useState(loadRoles);
+  const [users, setUsers] = useState(loadUsers);
+
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('currentUser');
+      return saved ? JSON.parse(saved) : null;
+    } catch (_) {
+      return null;
+    }
+  });
+
+  // ── Resolve permissions for the logged-in user ────────────────────────────
+  const currentRole = roles.find(r => r.id === currentUser?.role);
+  const permissions = currentRole?.permissions ?? DEFAULT_PERMISSIONS;
+  const isAdmin = permissions.canManageUsers === true;
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
+
+  const login = (username, password) => {
+    const match = users.find(
+      u => u.username.toLowerCase() === username.toLowerCase() && u.password === password
+    );
+    if (!match) return false;
+
+    const safeUser = {
+      id: match.id,
+      username: match.username,
+      fullName: match.fullName,
+      role: match.role,
+    };
+    setCurrentUser(safeUser);
+    localStorage.setItem('currentUser', JSON.stringify(safeUser));
+    return true;
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('currentUser');
+  };
+
+  // ── Role Management ───────────────────────────────────────────────────────
+
+  /** createRole({ name, permissions }) */
+  const createRole = ({ name, permissions: perms = {} }) => {
+    if (!name?.trim()) return { success: false, error: 'Role name is required.' };
+
+    const duplicate = roles.find(r => r.name.toLowerCase() === name.trim().toLowerCase());
+    if (duplicate) return { success: false, error: `A role named "${name}" already exists.` };
+
+    const newRole = {
+      id: crypto.randomUUID(),
+      name: name.trim(),
+      builtIn: false,
+      permissions: { ...DEFAULT_PERMISSIONS, ...perms },
+    };
+
+    const updated = [...roles, newRole];
+    setRoles(updated);
+    saveRoles(updated);
+    return { success: true, role: newRole };
+  };
+
+  /** updateRole(id, { name?, permissions? }) */
+  const updateRole = (id, changes) => {
+    const target = roles.find(r => r.id === id);
+    if (!target) return { success: false, error: 'Role not found.' };
+    if (target.id === 'admin') return { success: false, error: 'The Admin role cannot be edited.' };
+
+    const updated = roles.map(r =>
+      r.id === id
+        ? { ...r, ...(changes.name ? { name: changes.name } : {}), permissions: { ...r.permissions, ...(changes.permissions || {}) } }
+        : r
+    );
+    setRoles(updated);
+    saveRoles(updated);
+    return { success: true };
+  };
+
+  /** deleteRole(id) */
+  const deleteRole = (id) => {
+    const target = roles.find(r => r.id === id);
+    if (!target) return { success: false, error: 'Role not found.' };
+    if (target.builtIn) return { success: false, error: `The "${target.name}" role is built-in and cannot be deleted.` };
+
+    const inUse = users.some(u => u.role === id);
+    if (inUse) return { success: false, error: 'Cannot delete a role that is assigned to users. Reassign those users first.' };
+
+    const updated = roles.filter(r => r.id !== id);
+    setRoles(updated);
+    saveRoles(updated);
+    return { success: true };
+  };
+
+  // ── User Management ───────────────────────────────────────────────────────
+
+  const createUser = ({ username, fullName, password, role = 'user' }) => {
+    if (!username || !password) return { success: false, error: 'Username and password are required.' };
+
+    const duplicate = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+    if (duplicate) return { success: false, error: `Username "${username}" is already taken.` };
+
+    if (!roles.find(r => r.id === role)) return { success: false, error: 'Selected role does not exist.' };
+
+    const newUser = {
+      id: crypto.randomUUID(),
+      username: username.trim(),
+      fullName: fullName?.trim() || username.trim(),
+      password,
+      role,
+    };
+
+    const updated = [...users, newUser];
+    setUsers(updated);
+    saveUsers(updated);
+    return { success: true };
+  };
+
+  /**
+   * updateUser(id, changes)
+   * changes can include: fullName, password, role
+   */
+  const updateUser = (id, changes) => {
+    if (changes.role && !roles.find(r => r.id === changes.role)) {
+      return { success: false, error: 'Selected role does not exist.' };
+    }
+
+    const updated = users.map(u => (u.id === id ? { ...u, ...changes } : u));
+    setUsers(updated);
+    saveUsers(updated);
+
+    // Refresh session if current user was updated
+    if (currentUser?.id === id) {
+      const refreshed = updated.find(u => u.id === id);
+      if (refreshed) {
+        const safeUser = { id: refreshed.id, username: refreshed.username, fullName: refreshed.fullName, role: refreshed.role };
+        setCurrentUser(safeUser);
+        localStorage.setItem('currentUser', JSON.stringify(safeUser));
+      }
+    }
+    return { success: true };
+  };
+
+  const deleteUser = (id) => {
+    if (currentUser?.id === id) return { success: false, error: "You can't delete yourself." };
+    const updated = users.filter(u => u.id !== id);
+    setUsers(updated);
+    saveUsers(updated);
+    return { success: true };
+  };
+
+  // ── Exposed value ─────────────────────────────────────────────────────────
+
+  const value = {
+    // Auth state
+    currentUser,
+    permissions,
+    isAdmin,
+    login,
+    logout,
+
+    // Users
+    users,
+    createUser,
+    updateUser,
+    deleteUser,
+
+    // Roles
+    roles,
+    createRole,
+    updateRole,
+    deleteRole,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};

@@ -6,17 +6,15 @@
  */
 import React, { useState } from 'react';
 import { CheckSquare, Lock, User, AlertCircle } from 'lucide-react';
+import { useAuthContext } from '../../contexts/AuthContext';
 import styles from './LoginPage.module.css';
 
-// Hard-coded credentials (client-side only, suitable for a personal private app)
-const VALID_USERNAME = 'mohamad';
-const VALID_PASSWORD = 'mh123321';
-
-const LoginPage = ({ onLogin }) => {
+const LoginPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuthContext();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,10 +24,9 @@ const LoginPage = ({ onLogin }) => {
     // Simulate a brief loading delay for a polished feel
     await new Promise(resolve => setTimeout(resolve, 600));
 
-    if (username.trim().toLowerCase() === VALID_USERNAME && password === VALID_PASSWORD) {
-      localStorage.setItem('isLoggedIn', 'true');
-      onLogin();
-    } else {
+    const success = login(username, password);
+
+    if (!success) {
       setError('Invalid username or password. Please try again.');
     }
 

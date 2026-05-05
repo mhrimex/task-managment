@@ -7,6 +7,7 @@ import TaskItem from './TaskItem';
 import Input from '../common/Input';
 import Button from '../common/Button';
 import { useTaskContext } from '../../contexts/TaskContext';
+import { useAuthContext } from '../../contexts/AuthContext';
 import styles from './TaskList.module.css';
 
 const TaskList = ({ onAddTask, onEditTask }) => {
@@ -22,6 +23,7 @@ const TaskList = ({ onAddTask, onEditTask }) => {
     sortBy,
     setSortBy
   } = useTaskContext();
+  const { permissions } = useAuthContext();
 
   const handleFilterChange = (newFilter) => setFilter(newFilter);
 
@@ -77,7 +79,9 @@ const TaskList = ({ onAddTask, onEditTask }) => {
       <header className={styles.header}>
         <div className={styles.headerTop}>
           <h2>Your Tasks</h2>
-          <Button icon={PlusCircle} onClick={onAddTask}>Add Task</Button>
+          {permissions.canCreateTask && (
+            <Button icon={PlusCircle} onClick={onAddTask}>Add Task</Button>
+          )}
         </div>
         
         <div className={styles.toolbar}>

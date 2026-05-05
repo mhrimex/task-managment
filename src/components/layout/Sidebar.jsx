@@ -7,20 +7,25 @@ import {
   LayoutDashboard, 
   Calendar, 
   Settings,
+  Users,
   X 
 } from 'lucide-react';
 import { useTaskContext } from '../../contexts/TaskContext';
+import { useAuthContext } from '../../contexts/AuthContext';
 import styles from './Sidebar.module.css';
 
 const Sidebar = ({ isOpen, closeSidebar, activeTab, setActiveTab }) => {
   const { tasks } = useTaskContext();
+  const { isAdmin } = useAuthContext();
   const pendingCount = tasks.filter(t => t.status !== 'completed').length;
 
   const navItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { id: 'tasks', icon: CheckSquare, label: 'My Tasks' },
-    { id: 'calendar', icon: Calendar, label: 'Calendar' },
-    { id: 'settings', icon: Settings, label: 'Settings' },
+    { id: 'tasks',     icon: CheckSquare,     label: 'My Tasks' },
+    { id: 'calendar',  icon: Calendar,        label: 'Calendar' },
+    // Admin-only item:
+    ...(isAdmin ? [{ id: 'users', icon: Users, label: 'Manage Users' }] : []),
+    { id: 'settings',  icon: Settings,        label: 'Settings' },
   ];
 
   return (

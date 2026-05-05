@@ -4,9 +4,11 @@
 import React, { useState, useEffect } from 'react';
 import Input from '../common/Input';
 import Button from '../common/Button';
+import { useAuthContext } from '../../contexts/AuthContext';
 import styles from './TaskForm.module.css';
 
 const TaskForm = ({ initialData, onSubmit, onCancel }) => {
+  const { permissions, users } = useAuthContext();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -127,13 +129,20 @@ const TaskForm = ({ initialData, onSubmit, onCancel }) => {
         </div>
       </div>
 
-      <Input
-        label="Assigned User"
-        name="assignedUser"
-        value={formData.assignedUser}
-        onChange={handleChange}
-        placeholder="Who is this assigned to?"
-      />
+      {permissions.canAssignTask && (
+        <Input
+          type="select"
+          label="Assigned User"
+          name="assignedUser"
+          value={formData.assignedUser}
+          onChange={handleChange}
+        >
+          <option value="">-- Assign to a user --</option>
+          {users.map(u => (
+            <option key={u.id} value={u.username}>{u.fullName || u.username}</option>
+          ))}
+        </Input>
+      )}
 
       <div className={styles.actions}>
         <Button type="button" variant="ghost" onClick={onCancel}>

@@ -2,17 +2,23 @@
  * src/components/layout/Header.jsx
  */
 import React, { useState, useRef, useEffect } from 'react';
-import { Menu, Moon, Sun, Bell, AlertCircle, Calendar as CalendarIcon, RefreshCw, LogOut } from 'lucide-react';
+import { Menu, Moon, Sun, Bell, AlertCircle, Calendar as CalendarIcon, RefreshCw, LogOut, ShieldCheck, User } from 'lucide-react';
 import { format, isPast, parseISO, isToday } from 'date-fns';
 import { useTheme } from '../../hooks/useTheme';
 import { useTaskContext } from '../../contexts/TaskContext';
+import { useAuthContext } from '../../contexts/AuthContext';
 import styles from './Header.module.css';
 
 const Header = ({ toggleSidebar, onLogout }) => {
   const { theme, toggleTheme } = useTheme();
   const { tasks, manualSync, isLoading } = useTaskContext();
+  const { currentUser, isAdmin } = useAuthContext();
   const [showNotifications, setShowNotifications] = useState(false);
   const dropdownRef = useRef(null);
+
+  // Get the first letter of the username for the avatar
+  const avatarLetter = currentUser?.username ? currentUser.username[0].toUpperCase() : '?';
+  const displayName = currentUser?.username || 'Unknown';
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -104,8 +110,18 @@ const Header = ({ toggleSidebar, onLogout }) => {
           {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
         </button>
         
-        <div className={styles.avatar} title="Logged in as Mohamad">
-           <span>M</span>
+        {/* User info pill: shows username + role badge */}
+        <div className={styles.userInfo}>
+          <div className={styles.avatar} title={`Logged in as ${displayName}`}>
+            <span>{avatarLetter}</span>
+          </div>
+          <div className={styles.userMeta}>
+            <span className={styles.userName}>{displayName}</span>
+            <span className={`${styles.roleBadge} ${isAdmin ? styles.roleAdmin : styles.roleUser}`}>
+              {isAdmin ? <ShieldCheck size={10} /> : <User size={10} />}
+              {isAdmin ? 'Admin' : 'User'}
+            </span>
+          </div>
         </div>
 
         <button

@@ -7,6 +7,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import * as db from '../services/db';
 import { supabase } from '../services/supabase';
+import { useAuthContext } from './AuthContext';
 
 const TaskContext = createContext();
 
@@ -19,6 +20,7 @@ export const useTaskContext = () => {
 };
 
 export const TaskProvider = ({ children }) => {
+  const { currentUser, permissions, isAdmin } = useAuthContext();
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -155,6 +157,7 @@ export const TaskProvider = ({ children }) => {
     try {
       const newTask = {
         ...taskData,
+        assignedUser: taskData.assignedUser || currentUser?.username || '',
         id: crypto.randomUUID(), // Ensure UUID for each task
         status: 'pending',
         createdAt: new Date().toISOString(),
@@ -258,8 +261,14 @@ export const TaskProvider = ({ children }) => {
     }
   };
 
+  const visibleTasks = React.useMemo(() => {
+    if (isAdmin) return tasks;
+    if (!currentUser) return [];
+    return tasks.filter(t => t.assignedUser && t.assignedUser.toLowerCase() === currentUser.username.toLowerCase());
+  }, [tasks, isAdmin, currentUser]);
+
   const value = {
-    tasks,
+    tasks: visibleTasks,
     isLoading,
     error,
     addTask,
