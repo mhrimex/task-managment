@@ -230,53 +230,43 @@ export const AuthProvider = ({ children }) => {
   // ── Role Management ───────────────────────────────────────────────────────
 
   /** createRole({ name, permissions }) */
-  const createRole = ({ name, permissions: perms = {} }) => {
+  const createRole = async ({ name, permissions: perms = {} }) => {
     if (!name?.trim()) return { success: false, error: 'Role name is required.' };
 
-    const duplicate = roles.find(r => r.name.toLowerCase() === name.trim().toLowerCase());
-    if (duplicate) return { success: false, error: `A role named "${name}" already exists.` };
-
-    const newRole = {
-      id: crypto.randomUUID(),
+    const { data, error } = await supabase.from('roles').insert({
       name: name.trim(),
-      builtIn: false,
       permissions: { ...DEFAULT_PERMISSIONS, ...perms },
-    };
+      built_in: false
+    }).select().single();
 
-    const updated = [...roles, newRole];
-    setRoles(updated);
-    saveRoles(updated);
-    return { success: true, role: newRole };
+    if (error) return { success: false, error: error.message };
+
+    setRoles(prev => [...prev, data]); // Update UI immediately
+    return { success: true, role: data };
   };
 
   /** updateRole(id, { name?, permissions? }) */
-  const updateRole = (id, changes) => {
-    const target = roles.find(r => r.id === id);
-    if (!target) return { success: false, error: 'Role not found.' };
-    if (target.id === 'admin') return { success: false, error: 'The Admin role cannot be edited.' };
+  const updateRole = async (id, changes) => {
+    const { data, error } = await supabase.from('roles')
+      .update({ 
+        ...(changes.name ? { name: changes.name } : {}), 
+        permissions: changes.permissions 
+      })
+      .eq('id', id)
+      .select().single();
 
-    const updated = roles.map(r =>
-      r.id === id
-        ? { ...r, ...(changes.name ? { name: changes.name } : {}), permissions: { ...r.permissions, ...(changes.permissions || {}) } }
-        : r
-    );
-    setRoles(updated);
-    saveRoles(updated);
+    if (error) return { success: false, error: error.message };
+
+    setRoles(prev => prev.map(r => r.id === id ? data : r)); // Update UI
     return { success: true };
   };
 
   /** deleteRole(id) */
-  const deleteRole = (id) => {
-    const target = roles.find(r => r.id === id);
-    if (!target) return { success: false, error: 'Role not found.' };
-    if (target.builtIn) return { success: false, error: `The "${target.name}" role is built-in and cannot be deleted.` };
+  const deleteRole = async (id) => {
+    const { error } = await supabase.from('roles').delete().eq('id', id);
+    if (error) return { success: false, error: error.message };
 
-    const inUse = users.some(u => u.role === id);
-    if (inUse) return { success: false, error: 'Cannot delete a role that is assigned to users. Reassign those users first.' };
-
-    const updated = roles.filter(r => r.id !== id);
-    setRoles(updated);
-    saveRoles(updated);
+    setRoles(prev => prev.filter(r => r.id !== id)); // Update UI immediately
     return { success: true };
   };
 
