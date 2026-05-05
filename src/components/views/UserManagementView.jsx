@@ -35,8 +35,14 @@ const CreateUserModal = ({ onClose, onCreated }) => {
   };
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.modal} onClick={e => e.stopPropagation()}>
+    <div 
+      className={styles.modalOverlay} 
+      onMouseDown={(e) => {
+        // Only close if clicking the background itself
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className={styles.modal}>
         <div className={styles.modalHeader}>
           <h3><PlusCircle size={18} /> Create New User</h3>
           <button className={styles.closeBtn} onClick={onClose}><X size={20} /></button>
@@ -50,15 +56,15 @@ const CreateUserModal = ({ onClose, onCreated }) => {
         ) : (
           <form onSubmit={handleSubmit} className={styles.form}>
             <div className={styles.field}>
-              <label>Email *</label>
-              <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="e.g., user@example.com" required autoFocus />
+              <label>Email Address *</label>
+              <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="user@example.com" required autoFocus />
             </div>
             <div className={styles.field}>
-              <label>Username *</label>
-              <input name="username" value={form.username} onChange={handleChange} placeholder="e.g., john" required />
+              <label>Username (Optional)</label>
+              <input name="username" value={form.username} onChange={handleChange} placeholder="e.g., john_doe" />
             </div>
             <div className={styles.field}>
-              <label>Full Name</label>
+              <label>Full Name (Optional)</label>
               <input name="fullName" value={form.fullName} onChange={handleChange} placeholder="e.g., John Smith" />
             </div>
             <div className={styles.field}>
@@ -71,7 +77,7 @@ const CreateUserModal = ({ onClose, onCreated }) => {
               </div>
             </div>
             <div className={styles.field}>
-              <label>Role</label>
+              <label>Assign Role</label>
               <select name="role" value={form.role} onChange={handleChange}>
                 {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
               </select>

@@ -148,12 +148,15 @@ export const AuthProvider = ({ children }) => {
   });
 
   // ── Resolve permissions for the logged-in user ────────────────────────────
-  const currentRole = roles.find(r => r.id === currentUser?.role);
+  const currentRole = roles.find(r => r.id === currentUser?.role) || 
+                      roles.find(r => r.name === 'Admin' && (currentUser?.email === 'mohamadhashem.rimex@gmail.com' || currentUser?.username === 'mohamad'));
+  
   const permissions = currentRole?.permissions ?? DEFAULT_PERMISSIONS;
   
-  // Safety fallback: If your email matches, you ARE an admin.
+  // Safety fallback: If your email or username matches, you ARE an admin.
   const isAdmin = permissions.canManageUsers === true || 
-                  currentUser?.email === 'mohamadhashem.rimex@gmail.com';
+                  currentUser?.email === 'mohamadhashem.rimex@gmail.com' ||
+                  currentUser?.username === 'mohamad';
 
   // ── Auth ──────────────────────────────────────────────────────────────────
 
