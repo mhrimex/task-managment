@@ -165,7 +165,7 @@ export const AuthProvider = ({ children }) => {
               username: profile.username,
               fullName: profile.full_name,
               role: profile.role_id,
-              permissions: profile.roles?.permissions || DEFAULT_PERMISSIONS
+              permissions: { ...DEFAULT_PERMISSIONS, ...(profile.roles?.permissions || {}) }
             };
             setCurrentUser(freshUser);
             localStorage.setItem('currentUser', JSON.stringify(freshUser));
@@ -190,7 +190,7 @@ export const AuthProvider = ({ children }) => {
     BUILT_IN_ROLES.find(r => r.name === 'Admin' && (currentUser?.email === 'mohamadhashem.rimex@gmail.com' || currentUser?.username === 'mohamad'))
   );
   
-  const permissions = currentRole?.permissions || DEFAULT_PERMISSIONS;
+  const permissions = { ...DEFAULT_PERMISSIONS, ...(currentRole?.permissions || {}) };
   
   // Safety fallback: If your email or username matches, you ARE an admin.
   const isAdmin = permissions.canManageUsers === true || 
@@ -248,7 +248,7 @@ export const AuthProvider = ({ children }) => {
         username: profile.username,
         fullName: profile.full_name,
         role: profile.role_id,
-        permissions: profile.roles?.permissions ?? DEFAULT_PERMISSIONS
+        permissions: { ...DEFAULT_PERMISSIONS, ...(profile.roles?.permissions || {}) }
       };
 
       setCurrentUser(userToSave);
