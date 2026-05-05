@@ -45,14 +45,14 @@ const LoginPage = () => {
         {/* Login Form */}
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.field}>
-            <label htmlFor="email" className={styles.label}>Email Address</label>
+            <label htmlFor="email" className={styles.label}>Email or Username</label>
             <div className={styles.inputWrapper}>
               <User size={18} className={styles.inputIcon} />
               <input
                 id="email"
-                type="email"
+                type="text"
                 className={styles.input}
-                placeholder="Enter your email"
+                placeholder="Enter your email or username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
