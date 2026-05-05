@@ -113,22 +113,47 @@ export const AuthProvider = ({ children }) => {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // ── Load Roles and Users from Supabase ────────────────────────────────────
+  // ── Load Roles, Users, and Current User Profile from Supabase ─────────────
   useEffect(() => {
     const initAuthData = async () => {
       try {
-        // Fetch roles
+        // 1. Fetch roles
         const { data: rolesData } = await supabase.from('roles').select('*');
         if (rolesData) setRoles(rolesData);
 
-        // Fetch user profiles
+        // 2. Fetch user profiles for the management list
         const { data: profilesData } = await supabase.from('profiles').select('*');
         if (profilesData) setUsers(profilesData.map(p => ({
           id: p.id,
           username: p.username,
           fullName: p.full_name,
-          role: p.role_id
+          role: p.role_id,
+          email: p.email
         })));
+
+        // 3. RE-FETCH CURRENT USER PROFILE (Fixes the refresh issue)
+        const savedUser = localStorage.getItem('currentUser');
+        if (savedUser) {
+          const parsed = JSON.parse(savedUser);
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('*, roles(permissions)')
+            .eq('id', parsed.id)
+            .single();
+          
+          if (!error && profile) {
+            const freshUser = {
+              id: profile.id,
+              email: profile.email,
+              username: profile.username,
+              fullName: profile.full_name,
+              role: profile.role_id,
+              permissions: profile.roles?.permissions ?? DEFAULT_PERMISSIONS
+            };
+            setCurrentUser(freshUser);
+            localStorage.setItem('currentUser', JSON.stringify(freshUser));
+          }
+        }
       } catch (err) {
         console.error("Auth init error:", err);
       } finally {
