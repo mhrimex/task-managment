@@ -6,6 +6,7 @@ import Button from '../common/Button';
 
 const SettingsView = () => {
   const { theme, toggleTheme } = useTheme();
+  const { tasks, importTasks, wipeAllTasks } = useTaskContext();
   const [notifPermission, setNotifPermission] = useState('default');
   const [notifsEnabled, setNotifsEnabled] = useState(() => {
     return localStorage.getItem('app_notifs_enabled') !== 'false';

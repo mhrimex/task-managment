@@ -47,7 +47,11 @@ export const TaskProvider = ({ children }) => {
             description: row.description,
             status: row.status,
             priority: row.priority,
-            dueDate: row.due_date ? new Date(row.due_date).toISOString().split('T')[0] : null,
+            dueDate: (() => {
+              if (!row.due_date) return null;
+              const d = new Date(row.due_date);
+              return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
+            })(),
             requesterName: row.requester_name || null,
             companyName: row.company_name || null,
             assignedUser: row.assigned_user || null,
@@ -119,7 +123,7 @@ export const TaskProvider = ({ children }) => {
 
         if (error) {
            console.error("Upload error", error);
-        } else if (data && data.length > 0) {
+        } else if (data && Array.isArray(data) && data.length > 0) {
           // Update local DB to mark them as synced
           const tasksToUpdate = [];
           for (const row of data) {
@@ -253,9 +257,11 @@ export const TaskProvider = ({ children }) => {
     try {
       for (const t of tasks) {
         await db.deleteTaskById(t.id);
-        supabase.from('tasks').delete().eq('id', t.id).then(({error}) => {
-          if (error) console.log('Backend not available for delete', error);
-        });
+        try {
+          await supabase.from('tasks').delete().eq('id', t.id);
+        } catch (e) {
+          console.log('Backend not available for delete', e);
+        }
       }
       setTasks([]);
     } catch (err) {

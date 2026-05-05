@@ -112,6 +112,14 @@ export const AuthProvider = ({ children }) => {
   const [roles, setRoles] = useState([]);
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('currentUser');
+      return saved ? JSON.parse(saved) : null;
+    } catch (_) {
+      return null;
+    }
+  });
 
   // ── Load Roles, Users, and Current User Profile from Supabase ─────────────
   useEffect(() => {
@@ -140,15 +148,17 @@ export const AuthProvider = ({ children }) => {
             .select('*, roles(permissions)')
             .eq('id', parsed.id)
             .single();
-          
-          if (!error && profile) {
+
+          if (error) {
+            console.error("Profile refetch error:", error);
+          } else if (profile) {
             const freshUser = {
               id: profile.id,
               email: profile.email,
               username: profile.username,
               fullName: profile.full_name,
               role: profile.role_id,
-              permissions: profile.roles?.permissions ?? DEFAULT_PERMISSIONS
+              permissions: profile.roles?.permissions || DEFAULT_PERMISSIONS
             };
             setCurrentUser(freshUser);
             localStorage.setItem('currentUser', JSON.stringify(freshUser));
@@ -163,20 +173,13 @@ export const AuthProvider = ({ children }) => {
     initAuthData();
   }, []);
 
-  const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem('currentUser');
-      return saved ? JSON.parse(saved) : null;
-    } catch (_) {
-      return null;
-    }
-  });
-
   // ── Resolve permissions for the logged-in user ────────────────────────────
-  const currentRole = roles.find(r => r.id === currentUser?.role) || 
-                      roles.find(r => r.name === 'Admin' && (currentUser?.email === 'mohamadhashem.rimex@gmail.com' || currentUser?.username === 'mohamad'));
+  const currentRole = Array.isArray(roles) ? (
+    roles.find(r => r.id === currentUser?.role) || 
+    roles.find(r => r.name === 'Admin' && (currentUser?.email === 'mohamadhashem.rimex@gmail.com' || currentUser?.username === 'mohamad'))
+  ) : null;
   
-  const permissions = currentRole?.permissions ?? DEFAULT_PERMISSIONS;
+  const permissions = currentRole?.permissions || DEFAULT_PERMISSIONS;
   
   // Safety fallback: If your email or username matches, you ARE an admin.
   const isAdmin = permissions.canManageUsers === true || 
