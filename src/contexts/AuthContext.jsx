@@ -25,10 +25,10 @@ const AuthContext = createContext();
 // ─── Default permission sets ─────────────────────────────────────────────────
 
 export const DEFAULT_PERMISSIONS = {
-  canUpdateStatus : false,
+  canUpdateStatus : true,
   canEditTask     : false,
   canDeleteTask   : false,
-  canCreateTask   : false,
+  canCreateTask   : true,  // Failsafe: allow creation by default
   canAssignTask   : false,
   canManageUsers  : false,
 };
@@ -52,10 +52,10 @@ const BUILT_IN_ROLES = [
     name: 'User',
     builtIn: false,
     permissions: {
-      canUpdateStatus : true,  // ← fixed: users CAN update status
+      canUpdateStatus : true,
       canEditTask     : false,
       canDeleteTask   : false,
-      canCreateTask   : false,
+      canCreateTask   : true,  // Allow users to create tasks by default
       canAssignTask   : false,
       canManageUsers  : false,
     },
@@ -126,8 +126,15 @@ export const AuthProvider = ({ children }) => {
     const initAuthData = async () => {
       try {
         // 1. Fetch roles
-        const { data: rolesData } = await supabase.from('roles').select('*');
-        if (rolesData) setRoles(rolesData);
+        const { data: rolesData, error: rolesError } = await supabase.from('roles').select('*');
+        if (rolesError) {
+          console.error("Supabase Roles Fetch Error:", rolesError);
+          setRoles(BUILT_IN_ROLES);
+        } else if (rolesData && rolesData.length > 0) {
+          setRoles(rolesData);
+        } else {
+          setRoles(BUILT_IN_ROLES);
+        }
 
         // 2. Fetch user profiles for the management list
         const { data: profilesData } = await supabase.from('profiles').select('*');
@@ -165,7 +172,8 @@ export const AuthProvider = ({ children }) => {
           }
         }
       } catch (err) {
-        console.error("Auth init error:", err);
+        console.error("Auth init fatal error:", err);
+        setRoles(BUILT_IN_ROLES); // Absolute fallback
       } finally {
         setIsLoading(false);
       }
@@ -174,10 +182,13 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // ── Resolve permissions for the logged-in user ────────────────────────────
-  const currentRole = Array.isArray(roles) ? (
+  const currentRole = (Array.isArray(roles) && roles.length > 0) ? (
     roles.find(r => r.id === currentUser?.role) || 
     roles.find(r => r.name === 'Admin' && (currentUser?.email === 'mohamadhashem.rimex@gmail.com' || currentUser?.username === 'mohamad'))
-  ) : null;
+  ) : (
+    BUILT_IN_ROLES.find(r => r.id === currentUser?.role) ||
+    BUILT_IN_ROLES.find(r => r.name === 'Admin' && (currentUser?.email === 'mohamadhashem.rimex@gmail.com' || currentUser?.username === 'mohamad'))
+  );
   
   const permissions = currentRole?.permissions || DEFAULT_PERMISSIONS;
   
