@@ -15,17 +15,17 @@ import styles from './UserManagementView.module.css';
 
 const CreateUserModal = ({ onClose, onCreated }) => {
   const { createUser, roles } = useAuthContext();
-  const [form, setForm] = useState({ username: '', fullName: '', password: '', role: 'user' });
+  const [form, setForm] = useState({ email: '', username: '', fullName: '', password: '', role: 'user' });
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
   const handleChange = (e) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    const result = createUser(form);
+    const result = await createUser(form);
     if (!result.success) {
       setError(result.error);
     } else {
@@ -50,8 +50,12 @@ const CreateUserModal = ({ onClose, onCreated }) => {
         ) : (
           <form onSubmit={handleSubmit} className={styles.form}>
             <div className={styles.field}>
+              <label>Email *</label>
+              <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="e.g., user@example.com" required autoFocus />
+            </div>
+            <div className={styles.field}>
               <label>Username *</label>
-              <input name="username" value={form.username} onChange={handleChange} placeholder="e.g., john" required autoFocus />
+              <input name="username" value={form.username} onChange={handleChange} placeholder="e.g., john" required />
             </div>
             <div className={styles.field}>
               <label>Full Name</label>

@@ -258,26 +258,37 @@ export const AuthProvider = ({ children }) => {
 
   // ── User Management ───────────────────────────────────────────────────────
 
-  const createUser = ({ username, fullName, password, role = 'user' }) => {
-    if (!username || !password) return { success: false, error: 'Username and password are required.' };
+  const createUser = async ({ email, username, fullName, password, role = 'user' }) => {
+    try {
+      // 1. Create the Auth account
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            username: username
+          }
+        }
+      });
 
-    const duplicate = users.find(u => u.username.toLowerCase() === username.toLowerCase());
-    if (duplicate) return { success: false, error: `Username "${username}" is already taken.` };
+      if (authError) return { success: false, error: authError.message };
 
-    if (!roles.find(r => r.id === role)) return { success: false, error: 'Selected role does not exist.' };
+      // 2. The profile is created automatically by the DB Trigger we ran earlier.
+      // We just need to update the role if it's not the default.
+      if (role && role !== 'user') {
+        const { error: roleError } = await supabase
+          .from('profiles')
+          .update({ role_id: role })
+          .eq('id', authData.user.id);
+        
+        if (roleError) console.error("Error setting role:", roleError);
+      }
 
-    const newUser = {
-      id: crypto.randomUUID(),
-      username: username.trim(),
-      fullName: fullName?.trim() || username.trim(),
-      password,
-      role,
-    };
-
-    const updated = [...users, newUser];
-    setUsers(updated);
-    saveUsers(updated);
-    return { success: true };
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
   };
 
   /**
