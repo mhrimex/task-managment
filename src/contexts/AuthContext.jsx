@@ -154,9 +154,27 @@ export const AuthProvider = ({ children }) => {
 
   // ── Auth ──────────────────────────────────────────────────────────────────
 
-  /** Performs real Supabase Auth login and fetches the associated profile. */
-  const login = async (email, password) => {
+  /** Performs real Supabase Auth login (supports both email and username). */
+  const login = async (identifier, password) => {
     try {
+      let email = identifier;
+
+      // 1. If the identifier is not an email, try to find the email associated with the username
+      if (!identifier.includes('@')) {
+        const { data: profileData, error: profileSearchError } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('username', identifier)
+          .single();
+        
+        if (profileSearchError || !profileData || !profileData.email) {
+          alert("Username not found or has no associated email.");
+          return false;
+        }
+
+        email = profileData.email; // Use the found email to log in
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -167,7 +185,7 @@ export const AuthProvider = ({ children }) => {
         return false;
       }
 
-      // Fetch the profile (including role/permissions)
+      // 2. Fetch the profile (including role/permissions)
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*, roles(permissions)')
