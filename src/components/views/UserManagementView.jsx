@@ -103,14 +103,14 @@ const EditUserModal = ({ user, onClose, onUpdated }) => {
 
   const handleChange = (e) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     // Only send password if it was changed
     const changes = { fullName: form.fullName, role: form.role };
     if (form.password) changes.password = form.password;
 
-    const result = updateUser(user.id, changes);
+    const result = await updateUser(user.id, changes);
     if (!result.success) {
       setError(result.error);
     } else {
@@ -240,9 +240,9 @@ const UserManagementView = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const handleDeleteUser = (user) => {
+  const handleDeleteUser = async (user) => {
     if (window.confirm(`Delete user "${user.username}"?`)) {
-      const result = deleteUser(user.id);
+      const result = await deleteUser(user.id);
       if (!result.success) alert(result.error);
     }
   };

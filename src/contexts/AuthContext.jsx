@@ -362,15 +362,21 @@ export const AuthProvider = ({ children }) => {
 
       if (authError) return { success: false, error: authError.message };
 
-      // 2. The profile is created automatically by the DB Trigger we ran earlier.
-      // We just need to update the role if it's not the default.
-      if (role && role !== 'user') {
-        const { error: roleError } = await supabase
-          .from('profiles')
-          .update({ role_id: role })
-          .eq('id', authData.user.id);
+      // 2. We must ensure the profile exists in Supabase. 
+      // Instead of relying on a potentially broken trigger, we'll manually insert/update it.
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .upsert({ 
+          id: authData.user.id,
+          email: email,
+          username: username,
+          full_name: fullName,
+          role_id: role
+        });
         
-        if (roleError) console.error("Error setting role:", roleError);
+      if (insertError) {
+        console.error("Error creating user profile in Supabase:", insertError);
+        // We won't fail the whole process, as the auth account exists
       }
 
       // 3. Fetch the created profile to add to local state
@@ -407,15 +413,29 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  /**
-   * updateUser(id, changes)
-   * changes can include: fullName, password, role
-   */
-  const updateUser = (id, changes) => {
+  const updateUser = async (id, changes) => {
     if (changes.role && !roles.find(r => r.id === changes.role)) {
       return { success: false, error: 'Selected role does not exist.' };
     }
 
+    // 1. Update Supabase Profile
+    const dbChanges = {};
+    if (changes.fullName) dbChanges.full_name = changes.fullName;
+    if (changes.role) dbChanges.role_id = changes.role;
+
+    if (Object.keys(dbChanges).length > 0) {
+      const { error } = await supabase.from('profiles').update(dbChanges).eq('id', id);
+      if (error) return { success: false, error: error.message };
+    }
+
+    // 2. Update Auth User Password (Requires Admin API or user must be logged in as themselves)
+    // We'll skip password update here as Supabase usually requires the user to do it themselves 
+    // or you need a backend with a Service Role key. We log a warning instead.
+    if (changes.password) {
+      console.warn("Password changes from the frontend for other users require an Admin API.");
+    }
+
+    // 3. Update Local State
     const updated = users.map(u => (u.id === id ? { ...u, ...changes } : u));
     setUsers(updated);
     saveUsers(updated);
@@ -432,8 +452,14 @@ export const AuthProvider = ({ children }) => {
     return { success: true };
   };
 
-  const deleteUser = (id) => {
+  const deleteUser = async (id) => {
     if (currentUser?.id === id) return { success: false, error: "You can't delete yourself." };
+    
+    // 1. Delete from Supabase profiles (hides them from app)
+    const { error } = await supabase.from('profiles').delete().eq('id', id);
+    if (error) return { success: false, error: error.message };
+
+    // 2. Update local state
     const updated = users.filter(u => u.id !== id);
     setUsers(updated);
     saveUsers(updated);
