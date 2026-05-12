@@ -245,13 +245,34 @@ export const AuthProvider = ({ children }) => {
       }
 
       // 2. Fetch the profile (including role/permissions)
-      const { data: profile, error: profileError } = await supabase
+      let { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*, roles(permissions)')
         .eq('id', data.user.id)
         .single();
 
-      if (profileError) {
+      if (profileError && profileError.code === 'PGRST116') {
+        // Profile not found, let's create it on the fly
+        console.log("Profile missing, attempting to create one...");
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            email: data.user.email,
+            username: email.split('@')[0], // Fallback username
+            full_name: email.split('@')[0],
+            role_id: 'user'
+          })
+          .select('*, roles(permissions)')
+          .single();
+
+        if (createError) {
+          console.error("Failed to auto-create profile:", createError);
+          alert("Login successful, but failed to create user profile in database.");
+          return false;
+        }
+        profile = newProfile;
+      } else if (profileError) {
         console.error("Profile fetch error:", profileError);
         return false;
       }
@@ -350,6 +371,34 @@ export const AuthProvider = ({ children }) => {
           .eq('id', authData.user.id);
         
         if (roleError) console.error("Error setting role:", roleError);
+      }
+
+      // 3. Fetch the created profile to add to local state
+      const { data: newProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authData.user.id)
+        .single();
+      
+      if (newProfile) {
+        const localUser = {
+          id: newProfile.id,
+          username: newProfile.username,
+          fullName: newProfile.full_name,
+          role: newProfile.role_id,
+          email: newProfile.email
+        };
+        setUsers(prev => [...prev, localUser]);
+      } else {
+        // Fallback if profile creation was delayed
+        const localUser = {
+          id: authData.user.id,
+          username: username,
+          fullName: fullName,
+          role: role,
+          email: email
+        };
+        setUsers(prev => [...prev, localUser]);
       }
 
       return { success: true };

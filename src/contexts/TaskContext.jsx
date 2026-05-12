@@ -9,6 +9,19 @@ import * as db from '../services/db';
 import { supabase } from '../services/supabase';
 import { useAuthContext } from './AuthContext';
 
+const generateId = () => {
+  try {
+    if (window.crypto && window.crypto.randomUUID) {
+      return window.crypto.randomUUID();
+    }
+  } catch (e) {}
+  
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 const TaskContext = createContext();
 
 export const useTaskContext = () => {
@@ -165,7 +178,7 @@ export const TaskProvider = ({ children }) => {
         ...taskData,
         assignedUser: taskData.assignedUser || currentUser?.username || '',
         assignedTo: taskData.assignedTo || currentUser?.id || null,
-        id: crypto.randomUUID(), // Ensure UUID for each task
+        id: generateId(), // Ensure UUID for each task with fallback
         status: 'pending',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
