@@ -16,12 +16,32 @@ envContent.split('\n').forEach(line => {
 });
 
 // ── 1. Using pg (direct SQL) to add Super Admin role ──────────────────────────
+let databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  try {
+    const serverEnvContent = fs.readFileSync('server/.env', 'utf8');
+    serverEnvContent.split('\n').forEach(line => {
+      const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+      if (match) {
+        let val = match[2] || '';
+        if (val.startsWith('"') || val.startsWith("'")) val = val.slice(1, -1);
+        if (match[1] === 'DATABASE_URL') {
+          databaseUrl = val;
+        }
+      }
+    });
+  } catch (err) {
+    console.warn("Could not read server/.env, attempting connection with env variable...");
+  }
+}
+
+if (!databaseUrl) {
+  console.error("Error: DATABASE_URL is not set in environment or server/.env");
+  process.exit(1);
+}
+
 const client = new Client({
-  user: 'postgres.kmlhipcavrhhemwyipdt',
-  host: 'aws-1-ap-northeast-1.pooler.supabase.com',
-  database: 'postgres',
-  password: 'Mohamad.rimex1310',
-  port: 6543,
+  connectionString: databaseUrl,
   ssl: { rejectUnauthorized: false },
   connectionTimeoutMillis: 8000,
 });

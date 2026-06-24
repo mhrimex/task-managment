@@ -17,7 +17,18 @@ function AppContent() {
   const { addTask, updateTask } = useTaskContext();
   const { logout, isAdmin } = useAuthContext();
   
-  const [activeTab, setActiveTab] = useState('tasks');
+  const [activeTab, setActiveTabState] = useState(() => {
+    const saved = localStorage.getItem('activeTab');
+    // Ensure that if it is 'users' and user is not admin, we fallback to 'tasks'
+    if (saved === 'users' && !isAdmin) return 'tasks';
+    return saved || 'tasks';
+  });
+
+  const setActiveTab = (tab) => {
+    setActiveTabState(tab);
+    localStorage.setItem('activeTab', tab);
+  };
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
 

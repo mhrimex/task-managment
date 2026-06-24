@@ -84,40 +84,10 @@ const BUILT_IN_ROLES = [
 ];
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────
-
-const loadRoles = () => {
-  try {
-    const stored = localStorage.getItem('app_roles');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch (_) {}
-  localStorage.setItem('app_roles', JSON.stringify(BUILT_IN_ROLES));
-  return BUILT_IN_ROLES;
-};
+// NOTE: Roles and Users are now sourced from Supabase. localStorage is only
+// used as a fallback for initial role display before the DB fetch completes.
 
 const saveRoles = (roles) => localStorage.setItem('app_roles', JSON.stringify(roles));
-
-const loadUsers = () => {
-  try {
-    const stored = localStorage.getItem('app_users');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch (_) {}
-
-  const defaults = [
-    { id: '1', username: 'admin',  fullName: 'Mohamad (Admin)', password: 'mh123',  role: 'admin' },
-    { id: '2', username: 'khodor', fullName: 'Khodor',           password: 'kd123',  role: 'user'  },
-    { id: '3', username: 'user2',  fullName: 'User Two',          password: '123',    role: 'user'  },
-  ];
-  localStorage.setItem('app_users', JSON.stringify(defaults));
-  return defaults;
-};
-
-const saveUsers = (users) => localStorage.setItem('app_users', JSON.stringify(users));
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
@@ -329,6 +299,9 @@ export const AuthProvider = ({ children }) => {
     await supabase.auth.signOut();
     setCurrentUser(null);
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('app_users');
+    localStorage.removeItem('app_roles');
+    localStorage.removeItem('activeTab');
   };
 
   // ── Role Management ───────────────────────────────────────────────────────
@@ -459,7 +432,7 @@ export const AuthProvider = ({ children }) => {
 
     // 1. Update Supabase Profile
     const dbChanges = {};
-    if (changes.fullName) dbChanges.full_name = changes.fullName;
+    if (changes.fullName !== undefined) dbChanges.full_name = changes.fullName;
     if (changes.role) dbChanges.role_id = changes.role;
 
     if (Object.keys(dbChanges).length > 0) {
@@ -467,41 +440,70 @@ export const AuthProvider = ({ children }) => {
       if (error) return { success: false, error: error.message };
     }
 
-    // 2. Update Auth User Password (Requires Admin API or user must be logged in as themselves)
-    // We'll skip password update here as Supabase usually requires the user to do it themselves 
-    // or you need a backend with a Service Role key. We log a warning instead.
+    // 2. Password update is not supported from the admin panel without a Service Role key.
     if (changes.password) {
-      console.warn("Password changes from the frontend for other users require an Admin API.");
+      console.warn("Password changes for other users require a Service Role key on the backend.");
     }
 
-    // 3. Update Local State
-    const updated = users.map(u => (u.id === id ? { ...u, ...changes } : u));
-    setUsers(updated);
-    saveUsers(updated);
+    // 3. Re-fetch fresh profiles from Supabase to reflect DB truth
+    const { data: profilesData } = await supabase.from('profiles').select('*');
+    if (profilesData) {
+      const freshUsers = profilesData.map(p => ({
+        id: p.id,
+        username: p.username,
+        fullName: p.full_name,
+        role: p.role_id,
+        email: p.email
+      }));
+      setUsers(freshUsers);
 
-    // Refresh session if current user was updated
-    if (currentUser?.id === id) {
-      const refreshed = updated.find(u => u.id === id);
-      if (refreshed) {
-        const safeUser = { id: refreshed.id, username: refreshed.username, fullName: refreshed.fullName, role: refreshed.role };
-        setCurrentUser(safeUser);
-        localStorage.setItem('currentUser', JSON.stringify(safeUser));
+      // Refresh session if current user was updated
+      if (currentUser?.id === id) {
+        const refreshed = freshUsers.find(u => u.id === id);
+        if (refreshed) {
+          const { data: profileWithRole } = await supabase
+            .from('profiles')
+            .select('*, roles(permissions)')
+            .eq('id', id)
+            .single();
+          const safeUser = {
+            id: refreshed.id,
+            username: refreshed.username,
+            fullName: refreshed.fullName,
+            role: refreshed.role,
+            email: refreshed.email,
+            permissions: { ...DEFAULT_PERMISSIONS, ...(profileWithRole?.roles?.permissions || {}) }
+          };
+          setCurrentUser(safeUser);
+          localStorage.setItem('currentUser', JSON.stringify(safeUser));
+        }
       }
     }
+
     return { success: true };
   };
 
   const deleteUser = async (id) => {
     if (currentUser?.id === id) return { success: false, error: "You can't delete yourself." };
     
-    // 1. Delete from Supabase profiles (hides them from app)
+    // 1. Delete from Supabase profiles
     const { error } = await supabase.from('profiles').delete().eq('id', id);
     if (error) return { success: false, error: error.message };
 
-    // 2. Update local state
-    const updated = users.filter(u => u.id !== id);
-    setUsers(updated);
-    saveUsers(updated);
+    // 2. Re-fetch fresh profiles from Supabase so the UI reflects DB truth
+    const { data: profilesData } = await supabase.from('profiles').select('*');
+    if (profilesData) {
+      setUsers(profilesData.map(p => ({
+        id: p.id,
+        username: p.username,
+        fullName: p.full_name,
+        role: p.role_id,
+        email: p.email
+      })));
+    } else {
+      // Fallback: optimistically remove from local state
+      setUsers(prev => prev.filter(u => u.id !== id));
+    }
     return { success: true };
   };
 
@@ -510,6 +512,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     // Auth state
     currentUser,
+    isLoading,
     permissions,
     isAdmin,
     isSuperAdmin,
