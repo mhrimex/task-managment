@@ -171,21 +171,25 @@ const RoleModal = ({ role, onClose, onSaved }) => {
 
   const handleToggle = (key) => setPerms(prev => ({ ...prev, [key]: !prev[key] }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     let result;
-    if (role) {
-      result = updateRole(role.id, { name, permissions: perms });
-    } else {
-      result = createRole({ name, permissions: perms });
-    }
+    try {
+      if (role) {
+        result = await updateRole(role.id, { name, permissions: perms });
+      } else {
+        result = await createRole({ name, permissions: perms });
+      }
 
-    if (!result.success) {
-      setError(result.error);
-    } else {
-      setSuccess(true);
-      setTimeout(() => { onSaved(); onClose(); }, 900);
+      if (!result.success) {
+        setError(result.error || 'Failed to save role');
+      } else {
+        setSuccess(true);
+        setTimeout(() => { onSaved(); onClose(); }, 900);
+      }
+    } catch (err) {
+      setError(err.message || 'An unexpected error occurred');
     }
   };
 
@@ -203,14 +207,14 @@ const RoleModal = ({ role, onClose, onSaved }) => {
           <form onSubmit={handleSubmit} className={styles.form}>
             <div className={styles.field}>
               <label>Role Name *</label>
-              <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g., Manager" required disabled={role?.id === 'admin'} />
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g., Manager" required disabled={role?.id === 'admin' || role?.id === 'super_admin'} />
             </div>
             
             <div className={styles.permissionsGrid}>
               <p className={styles.gridTitle}>Permissions</p>
               {Object.keys(DEFAULT_PERMISSIONS).map(key => (
                 <label key={key} className={styles.checkboxLabel}>
-                  <input type="checkbox" checked={perms[key]} onChange={() => handleToggle(key)} disabled={role?.id === 'admin'} />
+                  <input type="checkbox" checked={perms[key]} onChange={() => handleToggle(key)} disabled={role?.id === 'admin' || role?.id === 'super_admin'} />
                   <span>{key.replace(/([A-Z])/g, ' $1').replace(/^can /, 'Can ')}</span>
                 </label>
               ))}
@@ -220,7 +224,7 @@ const RoleModal = ({ role, onClose, onSaved }) => {
             
             <div className={styles.modalActions}>
               <button type="button" className={styles.cancelBtn} onClick={onClose}>Cancel</button>
-              <button type="submit" className={styles.submitBtn} disabled={role?.id === 'admin'}>
+              <button type="submit" className={styles.submitBtn} disabled={role?.id === 'admin' || role?.id === 'super_admin'}>
                 <Check size={16} /> {role ? 'Save Changes' : 'Create Role'}
               </button>
             </div>
@@ -234,7 +238,7 @@ const RoleModal = ({ role, onClose, onSaved }) => {
 // ─── Main View ────────────────────────────────────────────────────────────────
 
 const UserManagementView = () => {
-  const { users, roles, currentUser, deleteUser, deleteRole } = useAuthContext();
+  const { users, roles, currentUser, deleteUser, deleteRole, isSuperAdmin } = useAuthContext();
   const [activeTab, setActiveTab] = useState('users');
   const [modalType, setModalType] = useState(null); // 'create-user', 'edit-user', 'role'
   const [selectedItem, setSelectedItem] = useState(null);
@@ -247,10 +251,10 @@ const UserManagementView = () => {
     }
   };
 
-  const handleDeleteRole = (role) => {
+  const handleDeleteRole = async (role) => {
     if (window.confirm(`Delete role "${role.name}"?`)) {
-      const result = deleteRole(role.id);
-      if (!result.success) alert(result.error);
+      const result = await deleteRole(role.id);
+      if (!result.success) alert(result.error || 'Failed to delete role');
     }
   };
 
@@ -265,9 +269,11 @@ const UserManagementView = () => {
           <button className={styles.tabBtn} onClick={() => setActiveTab('users')} data-active={activeTab === 'users'}>
             <Users size={18} /> Users
           </button>
-          <button className={styles.tabBtn} onClick={() => setActiveTab('roles')} data-active={activeTab === 'roles'}>
-            <ShieldCheck size={18} /> Roles
-          </button>
+          {isSuperAdmin && (
+            <button className={styles.tabBtn} onClick={() => setActiveTab('roles')} data-active={activeTab === 'roles'}>
+              <ShieldCheck size={18} /> Roles
+            </button>
+          )}
         </div>
       </div>
 
@@ -275,9 +281,11 @@ const UserManagementView = () => {
         <>
           <div className={styles.tabHeader}>
             <h3>User Accounts</h3>
-            <button className={styles.addBtn} onClick={() => setModalType('create-user')}>
-              <PlusCircle size={18} /> Add User
-            </button>
+            {isSuperAdmin && (
+              <button className={styles.addBtn} onClick={() => setModalType('create-user')}>
+                <PlusCircle size={18} /> Add User
+              </button>
+            )}
           </div>
           <div className={styles.tableCard}>
             <table className={styles.table}>
@@ -285,77 +293,105 @@ const UserManagementView = () => {
                 <tr>
                   <th>User</th>
                   <th>Role</th>
-                  <th>Actions</th>
+                  {isSuperAdmin && <th>Actions</th>}
                 </tr>
               </thead>
               <tbody>
-                {users.map(user => (
-                  <tr key={user.id} className={user.id === currentUser?.id ? styles.selfRow : ''}>
-                    <td>
-                      <div className={styles.userCell}>
-                        <div className={`${styles.avatar} ${user.role === 'admin' ? styles.adminAvatar : styles.userAvatar}`}>
-                          {(user.fullName || user.username)[0].toUpperCase()}
+                {users.map(user => {
+                  const userRoleObj = roles.find(r => r.id === user.role);
+                  const roleName = userRoleObj?.name || user.role;
+                  const isUserSuperAdmin = roleName === 'Super Admin' || user.role === 'super_admin';
+                  const isUserAdmin = roleName === 'Admin' || user.role === 'admin';
+                  
+                  return (
+                    <tr key={user.id} className={user.id === currentUser?.id ? styles.selfRow : ''}>
+                      <td>
+                        <div className={styles.userCell}>
+                          <div className={`${styles.avatar} ${
+                            isUserSuperAdmin ? styles.superAdminAvatar : 
+                            isUserAdmin ? styles.adminAvatar : 
+                            styles.userAvatar
+                          }`}>
+                            {(user.fullName || user.username)[0].toUpperCase()}
+                          </div>
+                          <div>
+                            <p className={styles.fullName}>{user.fullName || user.username} <code className={styles.codeText}>@{user.username}</code></p>
+                            {user.id === currentUser?.id && <span className={styles.youBadge}>You</span>}
+                          </div>
                         </div>
-                        <div>
-                          <p className={styles.fullName}>{user.fullName || user.username} <code className={styles.codeText}>@{user.username}</code></p>
-                          {user.id === currentUser?.id && <span className={styles.youBadge}>You</span>}
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`${styles.rolePill} ${user.role === 'admin' ? styles.adminPill : styles.userPill}`}>
-                        {roles.find(r => r.id === user.role)?.name || user.role}
-                      </span>
-                    </td>
-                    <td>
-                      <div className={styles.actionGroup}>
-                        <button className={styles.iconAction} onClick={() => { setSelectedItem(user); setModalType('edit-user'); }} title="Edit User">
-                          <Edit2 size={16} />
-                        </button>
-                        <button className={styles.deleteBtn} onClick={() => handleDeleteUser(user)} disabled={user.id === currentUser?.id}>
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td>
+                        <span className={`${styles.rolePill} ${
+                          isUserSuperAdmin ? styles.superAdminPill : 
+                          isUserAdmin ? styles.adminPill : 
+                          styles.userPill
+                        }`}>
+                          {roleName}
+                        </span>
+                      </td>
+                      {isSuperAdmin && (
+                        <td>
+                          <div className={styles.actionGroup}>
+                            <button className={styles.iconAction} onClick={() => { setSelectedItem(user); setModalType('edit-user'); }} title="Edit User">
+                              <Edit2 size={16} />
+                            </button>
+                            <button className={styles.deleteBtn} onClick={() => handleDeleteUser(user)} disabled={user.id === currentUser?.id}>
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </>
       ) : (
-        <>
-          <div className={styles.tabHeader}>
-            <h3>Access Roles</h3>
-            <button className={styles.addBtn} onClick={() => { setSelectedItem(null); setModalType('role'); }}>
-              <PlusCircle size={18} /> Add Role
-            </button>
-          </div>
-          <div className={styles.rolesGrid}>
-            {roles.map(role => (
-              <div key={role.id} className={styles.roleCard}>
-                <div className={styles.roleCardHeader}>
-                  <div className={styles.roleNameInfo}>
-                    <ShieldCheck size={20} className={role.id === 'admin' ? styles.adminIcon : ''} />
-                    <h4>{role.name}</h4>
-                  </div>
-                  <div className={styles.roleActions}>
-                    <button onClick={() => { setSelectedItem(role); setModalType('role'); }} disabled={role.id === 'admin'}><Edit2 size={14} /></button>
-                    <button onClick={() => handleDeleteRole(role)} disabled={role.builtIn} className={styles.deleteRoleBtn}><Trash2 size={14} /></button>
-                  </div>
-                </div>
-                <div className={styles.permsList}>
-                  {Object.entries(role.permissions).map(([key, val]) => (
-                    <div key={key} className={`${styles.permItem} ${val ? styles.permActive : ''}`}>
-                      {val ? <Check size={12} /> : <X size={12} />}
-                      <span>{key.replace(/([A-Z])/g, ' $1').replace(/^can /, 'Can ')}</span>
+        isSuperAdmin && (
+          <>
+            <div className={styles.tabHeader}>
+              <h3>Access Roles</h3>
+              <button className={styles.addBtn} onClick={() => { setSelectedItem(null); setModalType('role'); }}>
+                <PlusCircle size={18} /> Add Role
+              </button>
+            </div>
+            <div className={styles.rolesGrid}>
+              {roles.map(role => {
+                const isRoleAdmin = role.id === 'admin';
+                const isRoleSuperAdmin = role.id === 'super_admin' || role.name === 'Super Admin';
+                
+                return (
+                  <div key={role.id} className={styles.roleCard}>
+                    <div className={styles.roleCardHeader}>
+                      <div className={styles.roleNameInfo}>
+                        <ShieldCheck size={20} className={
+                          isRoleSuperAdmin ? styles.superAdminIcon :
+                          isRoleAdmin ? styles.adminIcon :
+                          ''
+                        } />
+                        <h4>{role.name}</h4>
+                      </div>
+                      <div className={styles.roleActions}>
+                        <button onClick={() => { setSelectedItem(role); setModalType('role'); }} disabled={isRoleAdmin || isRoleSuperAdmin}><Edit2 size={14} /></button>
+                        <button onClick={() => handleDeleteRole(role)} disabled={role.builtIn || isRoleSuperAdmin} className={styles.deleteRoleBtn}><Trash2 size={14} /></button>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
+                    <div className={styles.permsList}>
+                      {Object.entries(role.permissions).map(([key, val]) => (
+                        <div key={key} className={`${styles.permItem} ${val ? styles.permActive : ''}`}>
+                          {val ? <Check size={12} /> : <X size={12} />}
+                          <span>{key.replace(/([A-Z])/g, ' $1').replace(/^can /, 'Can ')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )
       )}
 
       {modalType === 'create-user' && <CreateUserModal onClose={() => setModalType(null)} onCreated={() => setRefreshKey(k => k + 1)} />}

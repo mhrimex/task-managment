@@ -31,9 +31,26 @@ export const DEFAULT_PERMISSIONS = {
   canCreateTask   : true,  // Failsafe: allow creation by default
   canAssignTask   : false,
   canManageUsers  : false,
+  canCreateUser   : false, // Can create new users
+  canManageRoles  : false, // Can create/edit/delete roles
 };
 
 const BUILT_IN_ROLES = [
+  {
+    id: 'super_admin',
+    name: 'Super Admin',
+    builtIn: true,
+    permissions: {
+      canUpdateStatus : true,
+      canEditTask     : true,
+      canDeleteTask   : true,
+      canCreateTask   : true,
+      canAssignTask   : true,
+      canManageUsers  : true,
+      canCreateUser   : true,
+      canManageRoles  : true,
+    },
+  },
   {
     id: 'admin',
     name: 'Admin',
@@ -45,6 +62,8 @@ const BUILT_IN_ROLES = [
       canCreateTask   : true,
       canAssignTask   : true,
       canManageUsers  : true,
+      canCreateUser   : false,
+      canManageRoles  : false,
     },
   },
   {
@@ -58,6 +77,8 @@ const BUILT_IN_ROLES = [
       canCreateTask   : true,  // Allow users to create tasks by default
       canAssignTask   : false,
       canManageUsers  : false,
+      canCreateUser   : false,
+      canManageRoles  : false,
     },
   },
 ];
@@ -198,18 +219,22 @@ export const AuthProvider = ({ children }) => {
   // ── Resolve permissions for the logged-in user ────────────────────────────
   const currentRole = (Array.isArray(roles) && roles.length > 0) ? (
     roles.find(r => r.id === currentUser?.role) || 
-    roles.find(r => r.name === 'Admin' && (currentUser?.email === 'mohamadhashem.rimex@gmail.com' || currentUser?.username === 'mohamad'))
+    roles.find(r => r.name === 'Super Admin' && (currentUser?.email === 'mohamadhashem.rimex@gmail.com' || currentUser?.username === 'mohamad' || currentUser?.username === 'admin_new'))
   ) : (
     BUILT_IN_ROLES.find(r => r.id === currentUser?.role) ||
-    BUILT_IN_ROLES.find(r => r.name === 'Admin' && (currentUser?.email === 'mohamadhashem.rimex@gmail.com' || currentUser?.username === 'mohamad'))
+    BUILT_IN_ROLES.find(r => r.name === 'Super Admin' && (currentUser?.email === 'mohamadhashem.rimex@gmail.com' || currentUser?.username === 'mohamad' || currentUser?.username === 'admin_new'))
   );
   
   const permissions = { ...DEFAULT_PERMISSIONS, ...(currentRole?.permissions || {}) };
   
-  // Safety fallback: If your email or username matches, you ARE an admin.
+  // isAdmin: can manage users panel
   const isAdmin = permissions.canManageUsers === true || 
                   currentUser?.email === 'mohamadhashem.rimex@gmail.com' ||
-                  currentUser?.username === 'mohamad';
+                  currentUser?.username === 'mohamad' ||
+                  currentUser?.username === 'admin_new';
+
+  // isSuperAdmin: has full control including user creation and role management
+  const isSuperAdmin = permissions.canCreateUser === true && permissions.canManageRoles === true;
 
   // ── Auth ──────────────────────────────────────────────────────────────────
 
@@ -254,6 +279,11 @@ export const AuthProvider = ({ children }) => {
       if (profileError && profileError.code === 'PGRST116') {
         // Profile not found, let's create it on the fly
         console.log("Profile missing, attempting to create one...");
+        
+        // Find the actual UUID for the 'User' role
+        const defaultRole = roles.find(r => r.name.toLowerCase() === 'user');
+        const defaultRoleId = defaultRole ? defaultRole.id : null;
+
         const { data: newProfile, error: createError } = await supabase
           .from('profiles')
           .insert({
@@ -261,7 +291,7 @@ export const AuthProvider = ({ children }) => {
             email: data.user.email,
             username: email.split('@')[0], // Fallback username
             full_name: email.split('@')[0],
-            role_id: 'user'
+            role_id: defaultRoleId
           })
           .select('*, roles(permissions)')
           .single();
@@ -315,23 +345,24 @@ export const AuthProvider = ({ children }) => {
 
     if (error) return { success: false, error: error.message };
 
-    setRoles(prev => [...prev, data]); // Update UI immediately
+    setRoles(prev => [...prev, data]);
     return { success: true, role: data };
   };
 
   /** updateRole(id, { name?, permissions? }) */
   const updateRole = async (id, changes) => {
+    const updatePayload = {};
+    if (changes.name) updatePayload.name = changes.name;
+    if (changes.permissions) updatePayload.permissions = changes.permissions;
+
     const { data, error } = await supabase.from('roles')
-      .update({ 
-        ...(changes.name ? { name: changes.name } : {}), 
-        permissions: changes.permissions 
-      })
+      .update(updatePayload)
       .eq('id', id)
       .select().single();
 
     if (error) return { success: false, error: error.message };
 
-    setRoles(prev => prev.map(r => r.id === id ? data : r)); // Update UI
+    setRoles(prev => prev.map(r => r.id === id ? data : r));
     return { success: true };
   };
 
@@ -364,6 +395,14 @@ export const AuthProvider = ({ children }) => {
 
       // 2. We must ensure the profile exists in Supabase. 
       // Instead of relying on a potentially broken trigger, we'll manually insert/update it.
+      
+      // Resolve the actual UUID for the role if it's the string 'user'
+      let finalRoleId = role;
+      if (finalRoleId === 'user' || !finalRoleId) {
+        const defaultRole = roles.find(r => r.name.toLowerCase() === 'user');
+        finalRoleId = defaultRole ? defaultRole.id : null;
+      }
+
       const { error: insertError } = await supabase
         .from('profiles')
         .upsert({ 
@@ -371,7 +410,7 @@ export const AuthProvider = ({ children }) => {
           email: email,
           username: username,
           full_name: fullName,
-          role_id: role
+          role_id: finalRoleId
         });
         
       if (insertError) {
@@ -473,6 +512,7 @@ export const AuthProvider = ({ children }) => {
     currentUser,
     permissions,
     isAdmin,
+    isSuperAdmin,
     login,
     logout,
 
