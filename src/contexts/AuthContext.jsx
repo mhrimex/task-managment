@@ -440,9 +440,22 @@ export const AuthProvider = ({ children }) => {
       if (error) return { success: false, error: error.message };
     }
 
-    // 2. Password update is not supported from the admin panel without a Service Role key.
+    // 2. Password update — requires direct DB access via the backend server
     if (changes.password) {
-      console.warn("Password changes for other users require a Service Role key on the backend.");
+      try {
+        const response = await fetch('http://localhost:5000/api/users/update-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: id, newPassword: changes.password }),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          return { success: false, error: result.error || 'Failed to update password.' };
+        }
+      } catch (err) {
+        console.error('Password update error (is the server running?):', err);
+        return { success: false, error: 'Could not reach the backend server to update password. Make sure the server is running.' };
+      }
     }
 
     // 3. Re-fetch fresh profiles from Supabase to reflect DB truth

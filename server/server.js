@@ -90,6 +90,44 @@ app.delete('/api/tasks/:id', async (req, res) => {
   }
 });
 
+// POST: Update a user's password (Admin only - requires direct DB access via pgcrypto)
+app.post('/api/users/update-password', async (req, res) => {
+  const { userId, newPassword } = req.body;
+
+  if (!userId || !newPassword) {
+    return res.status(400).json({ error: 'userId and newPassword are required.' });
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  }
+
+  try {
+    // Ensure pgcrypto is available
+    await pool.query('CREATE EXTENSION IF NOT EXISTS pgcrypto;');
+
+    // Update the hashed password in auth.users using bcrypt
+    const result = await pool.query(
+      `UPDATE auth.users 
+       SET encrypted_password = crypt($1, gen_salt('bf', 10)),
+           updated_at = NOW()
+       WHERE id = $2
+       RETURNING id, email`,
+      [newPassword, userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'User not found in auth system.' });
+    }
+
+    console.log(`Password updated for user: ${result.rows[0].email}`);
+    res.json({ success: true, message: 'Password updated successfully.' });
+  } catch (error) {
+    console.error('Error updating password:', error);
+    res.status(500).json({ error: 'Failed to update password: ' + error.message });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
