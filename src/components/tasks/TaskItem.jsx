@@ -6,7 +6,7 @@
  * based on the current user's role permissions from AuthContext.
  */
 import React, { useState } from 'react';
-import { Edit2, Trash2, Calendar, AlertCircle, XCircle, FastForward, Briefcase, User, CheckCircle, RotateCcw } from 'lucide-react';
+import { Edit2, Trash2, Calendar, AlertCircle, XCircle, FastForward, Briefcase, User, CheckCircle, RotateCcw, ThumbsDown } from 'lucide-react';
 import { format, parseISO, isPast } from 'date-fns';
 import Button from '../common/Button';
 import Modal from '../common/Modal';
@@ -20,7 +20,8 @@ const TaskItem = ({ task, onUpdateStatus, onEdit, onDelete }) => {
   const isCompleted = task.status === 'completed';
   const isSkipped   = task.status === 'skipped';
   const isCancelled = task.status === 'cancelled';
-  const isFinished  = isCompleted || isSkipped || isCancelled;
+  const isRejected  = task.status === 'rejected';
+  const isFinished  = isCompleted || isSkipped || isCancelled || isRejected;
 
   const getPriorityColor = () => {
     switch (task.priority) {
@@ -39,7 +40,7 @@ const TaskItem = ({ task, onUpdateStatus, onEdit, onDelete }) => {
   const hasAnyAction = permissions.canUpdateStatus || permissions.canEditTask || permissions.canDeleteTask;
 
   return (
-    <div className={`${styles.taskItem} ${isCompleted ? styles.completed : ''} ${isSkipped ? styles.skipped : ''} ${isCancelled ? styles.cancelled : ''}`}>
+    <div className={`${styles.taskItem} ${isCompleted ? styles.completed : ''} ${isSkipped ? styles.skipped : ''} ${isCancelled ? styles.cancelled : ''} ${isRejected ? styles.rejected : ''}`}>
 
       <div
         className={styles.content}
@@ -113,6 +114,14 @@ const TaskItem = ({ task, onUpdateStatus, onEdit, onDelete }) => {
                   aria-label="Cancel task" title="Cancel Task"
                 >
                   <XCircle size={16} />
+                </Button>
+                <Button
+                  variant="ghost" size="sm"
+                  onClick={() => onUpdateStatus(task.id, 'rejected')}
+                  aria-label="Reject task" title="Reject Task"
+                  style={{ color: 'var(--color-danger, #ef4444)' }}
+                >
+                  <ThumbsDown size={16} />
                 </Button>
               </>
             ) : (

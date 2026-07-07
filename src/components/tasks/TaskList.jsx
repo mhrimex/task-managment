@@ -42,6 +42,8 @@ const TaskList = ({ onAddTask, onEditTask }) => {
         if (task.status !== 'skipped') return false;
       } else if (filter === 'cancelled') {
         if (task.status !== 'cancelled') return false;
+      } else if (filter === 'rejected') {
+        if (task.status !== 'rejected') return false;
       }
       // Search
       const query = searchQuery.toLowerCase();
@@ -97,10 +99,6 @@ const TaskList = ({ onAddTask, onEditTask }) => {
           <div className={styles.controls}>
             <div className={styles.filterTabs}>
               <button 
-                className={`${styles.tab} ${filter === 'all' ? styles.activeTab : ''}`}
-                onClick={() => handleFilterChange('all')}
-              >All</button>
-              <button 
                 className={`${styles.tab} ${filter === 'pending' ? styles.activeTab : ''}`}
                 onClick={() => handleFilterChange('pending')}
               >Pending</button>
@@ -116,6 +114,14 @@ const TaskList = ({ onAddTask, onEditTask }) => {
                 className={`${styles.tab} ${filter === 'cancelled' ? styles.activeTab : ''}`}
                 onClick={() => handleFilterChange('cancelled')}
               >Cancelled</button>
+              <button 
+                className={`${styles.tab} ${filter === 'rejected' ? styles.activeTab : ''}`}
+                onClick={() => handleFilterChange('rejected')}
+              >Rejected</button>
+              <button 
+                className={`${styles.tab} ${filter === 'all' ? styles.activeTab : ''}`}
+                onClick={() => handleFilterChange('all')}
+              >All</button>
             </div>
             
             <Input 

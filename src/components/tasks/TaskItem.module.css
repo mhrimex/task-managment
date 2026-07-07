@@ -18,13 +18,18 @@
   border-color: var(--color-primary-light);
 }
 
-.taskItem.completed {
-  opacity: 0.7;
+.taskItem.completed,
+.taskItem.skipped,
+.taskItem.cancelled,
+.taskItem.rejected {
+  opacity: 0.75;
   background-color: var(--color-bg);
 }
 
-.taskItem.completed .title {
-  text-decoration: line-through;
+.taskItem.completed .title,
+.taskItem.skipped .title,
+.taskItem.cancelled .title,
+.taskItem.rejected .title {
   color: var(--color-text-muted);
 }
 

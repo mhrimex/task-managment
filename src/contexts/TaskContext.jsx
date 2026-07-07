@@ -39,7 +39,7 @@ export const TaskProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   // Filter & Sort State
-  const [filter, setFilter] = useState('all'); // 'all', 'pending', 'completed'
+  const [filter, setFilter] = useState('pending'); // 'pending' as default (hides finished tasks)
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('createdDesc'); // newest tasks first by default
 
