@@ -10,7 +10,7 @@ import { Edit2, Trash2, Calendar, AlertCircle, XCircle, FastForward, Briefcase, 
 import { format, parseISO, isPast } from 'date-fns';
 import Button from '../common/Button';
 import Modal from '../common/Modal';
-import { useAuthContext } from '../../contexts/AuthContext';
+import { useAuthContext } from '../../lib/AuthContext';
 import styles from './TaskItem.module.css';
 
 const TaskItem = ({ task, onUpdateStatus, onEdit, onDelete }) => {

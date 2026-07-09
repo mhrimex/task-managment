@@ -6,8 +6,8 @@ import { PlusCircle, Search } from 'lucide-react';
 import TaskItem from './TaskItem';
 import Input from '../common/Input';
 import Button from '../common/Button';
-import { useTaskContext } from '../../contexts/TaskContext';
-import { useAuthContext } from '../../contexts/AuthContext';
+import { useTaskContext } from '../../lib/TaskContext';
+import { useAuthContext } from '../../lib/AuthContext';
 import styles from './TaskList.module.css';
 
 const TaskList = ({ onAddTask, onEditTask }) => {

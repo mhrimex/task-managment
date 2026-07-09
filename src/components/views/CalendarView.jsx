@@ -12,8 +12,8 @@ import {
   addDays,
   parseISO
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, CheckSquare } from 'lucide-react';
-import { useTaskContext } from '../../contexts/TaskContext';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTaskContext } from '../../lib/TaskContext';
 import styles from './CalendarView.module.css';
 import Button from '../common/Button';
 

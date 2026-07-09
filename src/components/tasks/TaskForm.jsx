@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import Input from '../common/Input';
 import Button from '../common/Button';
-import { useAuthContext } from '../../contexts/AuthContext';
+import { useAuthContext } from '../../lib/AuthContext';
 import styles from './TaskForm.module.css';
 
 const TaskForm = ({ initialData, onSubmit, onCancel }) => {

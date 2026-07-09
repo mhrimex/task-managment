@@ -4,9 +4,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Menu, Moon, Sun, Bell, AlertCircle, Calendar as CalendarIcon, RefreshCw, LogOut, ShieldCheck, User } from 'lucide-react';
 import { format, isPast, parseISO, isToday } from 'date-fns';
-import { useTheme } from '../../hooks/useTheme';
-import { useTaskContext } from '../../contexts/TaskContext';
-import { useAuthContext } from '../../contexts/AuthContext';
+import { useTheme } from '../../lib/useTheme';
+import { useTaskContext } from '../../lib/TaskContext';
+import { useAuthContext } from '../../lib/AuthContext';
 import styles from './Header.module.css';
 
 const Header = ({ toggleSidebar, onLogout }) => {

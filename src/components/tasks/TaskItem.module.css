@@ -33,56 +33,6 @@
   color: var(--color-text-muted);
 }
 
-/* Custom Checkbox */
-.checkboxWrapper {
-  position: relative;
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  margin-top: 0.25rem;
-}
-
-.checkbox {
-  opacity: 0;
-  width: 0;
-  height: 0;
-  position: absolute;
-}
-
-.customCheckbox {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 22px;
-  width: 22px;
-  background-color: transparent;
-  border: 2px solid var(--color-border);
-  border-radius: 4px;
-  transition: all var(--transition-fast);
-  cursor: pointer;
-}
-
-.checkbox:checked ~ .customCheckbox {
-  background-color: var(--color-primary);
-  border-color: var(--color-primary);
-}
-
-.checkbox:checked ~ .customCheckbox:after {
-  content: "";
-  position: absolute;
-  display: block;
-  left: 6px;
-  top: 2px;
-  width: 5px;
-  height: 10px;
-  border: solid white;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
-
-.checkboxWrapper:hover .customCheckbox {
-  border-color: var(--color-primary);
-}
 
 /* Content */
 .content {

@@ -1,12 +1,12 @@
-/**
+﻿/**
  * src/contexts/TaskContext.jsx
  * 
  * Provides global state management for Tasks.
  * This ensures any component can access or modify tasks without prop drilling.
  */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import * as db from '../services/db';
-import { supabase } from '../services/supabase';
+import * as db from './db';
+import { supabase } from './supabase';
 import { useAuthContext } from './AuthContext';
 
 const generateId = () => {
@@ -314,3 +314,4 @@ export const TaskProvider = ({ children }) => {
 
   return <TaskContext.Provider value={value}>{children}</TaskContext.Provider>;
 };
+

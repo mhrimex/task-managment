@@ -1,13 +1,13 @@
 /**
- * src/App.jsx
+ * src/AppContent.jsx
  */
 import React, { useState } from 'react';
 import DashboardLayout from './components/layout/DashboardLayout';
 import TaskList from './components/tasks/TaskList';
 import TaskForm from './components/tasks/TaskForm';
 import Modal from './components/common/Modal';
-import { useTaskContext } from './contexts/TaskContext';
-import { useAuthContext } from './contexts/AuthContext';
+import { useTaskContext } from './lib/TaskContext';
+import { useAuthContext } from './lib/AuthContext';
 import DashboardView from './components/views/DashboardView';
 import CalendarView from './components/views/CalendarView';
 import SettingsView from './components/views/SettingsView';

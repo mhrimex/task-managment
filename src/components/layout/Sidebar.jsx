@@ -10,8 +10,8 @@ import {
   Users,
   X 
 } from 'lucide-react';
-import { useTaskContext } from '../../contexts/TaskContext';
-import { useAuthContext } from '../../contexts/AuthContext';
+import { useTaskContext } from '../../lib/TaskContext';
+import { useAuthContext } from '../../lib/AuthContext';
 import styles from './Sidebar.module.css';
 
 const Sidebar = ({ isOpen, closeSidebar, activeTab, setActiveTab }) => {

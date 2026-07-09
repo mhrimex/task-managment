@@ -6,7 +6,7 @@
  */
 import React, { useState } from 'react';
 import { CheckSquare, Lock, User, AlertCircle } from 'lucide-react';
-import { useAuthContext } from '../../contexts/AuthContext';
+import { useAuthContext } from '../../lib/AuthContext';
 import styles from './LoginPage.module.css';
 
 const LoginPage = () => {

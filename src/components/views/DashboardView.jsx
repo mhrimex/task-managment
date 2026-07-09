@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTaskContext } from '../../contexts/TaskContext';
+import { useTaskContext } from '../../lib/TaskContext';
 import TaskList from '../tasks/TaskList';
 
 const DashboardView = ({ onAddTask, onEditTask }) => {

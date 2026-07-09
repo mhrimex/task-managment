@@ -1,4 +1,4 @@
-/**
+﻿/**
  * src/contexts/AuthContext.jsx
  *
  * Provides global authentication and role/permission management.
@@ -18,11 +18,11 @@
  * Users are stored in localStorage["app_users"].
  */
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../services/supabase';
+import { supabase } from './supabase';
 
 const AuthContext = createContext();
 
-// ─── Default permission sets ─────────────────────────────────────────────────
+// â”€â”€â”€ Default permission sets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const DEFAULT_PERMISSIONS = {
   canUpdateStatus : true,
@@ -83,13 +83,8 @@ const BUILT_IN_ROLES = [
   },
 ];
 
-// ─── Storage helpers ──────────────────────────────────────────────────────────
-// NOTE: Roles and Users are now sourced from Supabase. localStorage is only
-// used as a fallback for initial role display before the DB fetch completes.
 
-const saveRoles = (roles) => localStorage.setItem('app_roles', JSON.stringify(roles));
-
-// ─── Hook ─────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Hook â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const useAuthContext = () => {
   const context = useContext(AuthContext);
@@ -97,7 +92,7 @@ export const useAuthContext = () => {
   return context;
 };
 
-// ─── Provider ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Provider â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const AuthProvider = ({ children }) => {
   const [roles, setRoles] = useState([]);
@@ -112,7 +107,7 @@ export const AuthProvider = ({ children }) => {
     }
   });
 
-  // ── Load Roles, Users, and Current User Profile from Supabase ─────────────
+  // â”€â”€ Load Roles, Users, and Current User Profile from Supabase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     const initAuthData = async () => {
       setIsLoading(true);
@@ -186,7 +181,7 @@ export const AuthProvider = ({ children }) => {
     initAuthData();
   }, []);
 
-  // ── Resolve permissions for the logged-in user ────────────────────────────
+  // â”€â”€ Resolve permissions for the logged-in user â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const currentRole = (Array.isArray(roles) && roles.length > 0) ? (
     roles.find(r => r.id === currentUser?.role) || 
     roles.find(r => r.name === 'Super Admin' && (currentUser?.email === 'mohamadhashem.rimex@gmail.com' || currentUser?.username === 'mohamad' || currentUser?.username === 'admin_new'))
@@ -206,7 +201,7 @@ export const AuthProvider = ({ children }) => {
   // isSuperAdmin: has full control including user creation and role management
   const isSuperAdmin = permissions.canCreateUser === true && permissions.canManageRoles === true;
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
+  // â”€â”€ Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /** Performs real Supabase Auth login (supports both email and username). */
   const login = async (identifier, password) => {
@@ -304,7 +299,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('activeTab');
   };
 
-  // ── Role Management ───────────────────────────────────────────────────────
+  // â”€â”€ Role Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /** createRole({ name, permissions }) */
   const createRole = async ({ name, permissions: perms = {} }) => {
@@ -348,7 +343,7 @@ export const AuthProvider = ({ children }) => {
     return { success: true };
   };
 
-  // ── User Management ───────────────────────────────────────────────────────
+  // â”€â”€ User Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const createUser = async ({ email, username, fullName, password, role = 'user' }) => {
     try {
@@ -440,7 +435,7 @@ export const AuthProvider = ({ children }) => {
       if (error) return { success: false, error: error.message };
     }
 
-    // 2. Password update — requires direct DB access via the backend server
+    // 2. Password update â€” requires direct DB access via the backend server
     if (changes.password) {
       try {
         const response = await fetch('http://localhost:5000/api/users/update-password', {
@@ -520,7 +515,7 @@ export const AuthProvider = ({ children }) => {
     return { success: true };
   };
 
-  // ── Exposed value ─────────────────────────────────────────────────────────
+  // â”€â”€ Exposed value â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const value = {
     // Auth state
@@ -547,3 +542,4 @@ export const AuthProvider = ({ children }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+

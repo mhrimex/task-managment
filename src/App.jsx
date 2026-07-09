@@ -1,7 +1,7 @@
 import React from 'react';
 import AppContent from './AppContent';
-import { TaskProvider } from './contexts/TaskContext';
-import { AuthProvider, useAuthContext } from './contexts/AuthContext';
+import { TaskProvider } from './lib/TaskContext';
+import { AuthProvider, useAuthContext } from './lib/AuthContext';
 import LoginPage from './components/auth/LoginPage';
 
 function AppRoot() {

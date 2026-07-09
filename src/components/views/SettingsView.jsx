@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useTheme } from '../../hooks/useTheme';
-import { useTaskContext } from '../../contexts/TaskContext';
-import { Moon, Sun, Trash2, User, Bell, Check, Download, Upload } from 'lucide-react';
+import { useTheme } from '../../lib/useTheme';
+import { useTaskContext } from '../../lib/TaskContext';
+import { Moon, Sun, Trash2, User, Bell, Download, Upload } from 'lucide-react';
 import Button from '../common/Button';
 
 const SettingsView = () => {
@@ -85,8 +85,7 @@ const SettingsView = () => {
     setNotifsEnabled(false);
     localStorage.setItem('app_notifs_enabled', 'false');
   };
-  // We can include a generic context to handle this, or just map standard properties.
-  
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '800px' }}>
       <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Settings</h2>

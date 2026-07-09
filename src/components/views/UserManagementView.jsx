@@ -4,7 +4,7 @@
  * Admin-only view for managing users and roles.
  */
 import React, { useState } from 'react';
-import { useAuthContext, DEFAULT_PERMISSIONS } from '../../contexts/AuthContext';
+import { useAuthContext, DEFAULT_PERMISSIONS } from '../../lib/AuthContext';
 import { 
   Users, PlusCircle, Trash2, ShieldCheck, User, Eye, EyeOff, 
   X, Check, AlertCircle, Settings, Edit2, Shield, Lock
