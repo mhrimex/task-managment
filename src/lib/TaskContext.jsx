@@ -1,4 +1,4 @@
-﻿/**
+/**
  * src/contexts/TaskContext.jsx
  * 
  * Provides global state management for Tasks.
@@ -284,10 +284,18 @@ export const TaskProvider = ({ children }) => {
   };
 
   const visibleTasks = React.useMemo(() => {
-    if (isAdmin) return tasks;
+    if (isAdmin || permissions?.canAssignTask) return tasks;
     if (!currentUser) return [];
-    return tasks.filter(t => t.assignedUser && t.assignedUser.toLowerCase() === currentUser.username.toLowerCase());
-  }, [tasks, isAdmin, currentUser]);
+    return tasks.filter(t => {
+      if (t.assignedTo && t.assignedTo === currentUser.id) return true;
+      if (!t.assignedUser) return false;
+      const assignedLower = t.assignedUser.toLowerCase();
+      return (
+        assignedLower === currentUser.username.toLowerCase() ||
+        (currentUser.fullName && assignedLower === currentUser.fullName.toLowerCase())
+      );
+    });
+  }, [tasks, isAdmin, permissions, currentUser]);
 
   const value = {
     tasks: visibleTasks,
